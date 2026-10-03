@@ -45,24 +45,21 @@
       serverName: "MBJC Network",
       mainSite: "http://mbjc.info/",
       discordUrl: "https://discord.gg/2Nuwdyr4tZ",
-      webhookUrl: "",
-      // Verschlüsselter Hash für das Passwort "mbjc2026admin"
-      // Sicheres Hash-Verfahren ohne HTTPS-Abhängigkeit
-      adminHash: "220-196-200-[#]-192-200-100-104-[#]-192-198-210-210"
+      // FÜGE HIER DEINE DISCORD WEBHOOK URL EIN:
+      webhookUrl: "DEIN_DISCORD_WEBHOOK_HIER_EINFUEGEN"
     };
 
-    // Sichere HTTP-kompatible Hashing-Funktion
-    function secureHash(str) {
-      return str.split('').map((char, index) => {
-        return (char.charCodeAt(0) * 2 + (index % 3)).toString();
-      }).join('-') + "[#]-" + str.split('').reverse().map((char) => (char.charCodeAt(0) + 100).toString()).join('-');
-    }
-
     function App() {
-      const [view, setView] = React.useState("form");
+      const [view, setView] = React.useState("form"); // "form", "success", "adminLogin", "adminPanel"
       const [role, setRole] = React.useState("discord_mod");
-      const [adminPass, setAdminPass] = React.useState("");
-      const [adminError, setAdminError] = React.useState(false);
+      
+      // Admin 2FA Code Status
+      const [codeSent, setCodeSent] = React.useState(false);
+      const [generatedCode, setGeneratedCode] = React.useState("");
+      const [inputCode, setInputCode] = React.useState("");
+      const [adminError, setAdminError] = React.useState("");
+      const [isSendingCode, setIsSendingCode] = React.useState(false);
+
       const [applications, setApplications] = React.useState([]);
       const [selectedApp, setSelectedApp] = React.useState(null);
       const [searchTerm, setSearchTerm] = React.useState("");
@@ -105,6 +102,61 @@
         setFormData({ ...formData, [e.target.name]: e.target.value });
       };
 
+      // 1-MAL-CODE GENERIEREN UND ÜBER DISCORD WEBHOOK SENDEN
+      const sendDiscordAdminCode = async () => {
+        if (!CONFIG.webhookUrl || CONFIG.webhookUrl.includes("DEIN_DISCORD_WEBHOOK")) {
+          setAdminError("Bitte trage deine Discord Webhook URL in CONFIG.webhookUrl ein!");
+          return;
+        }
+
+        setIsSendingCode(true);
+        setAdminError("");
+
+        // Generiere zufälligen 6-stelligen Code
+        const newCode = Math.floor(100000 + Math.random() * 900000).toString();
+        setGeneratedCode(newCode);
+
+        try {
+          const res = await fetch(CONFIG.webhookUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              content: "🔐 **MBJC Admin Login Anforderung**",
+              embeds: [{
+                title: "🛡️ Einmaliger Admin-Sicherheitscode",
+                color: 6507761,
+                description: `Ein Admin versucht sich gerade auf **ticket.mbjc.info** einzuloggen.\n\nDein Code lautet: **\`${newCode}\`**\n\n*(Dieser Code ist nur für einen Login-Versuch gültig)*`,
+                footer: { text: "MBJC Security System" },
+                timestamp: new Date().toISOString()
+              }]
+            })
+          });
+
+          if (res.ok || res.status === 204) {
+            setCodeSent(true);
+          } else {
+            setAdminError("Fehler beim Senden über Discord Webhook.");
+          }
+        } catch (err) {
+          setAdminError("Netzwerkfehler beim Senden des Codes.");
+        } finally {
+          setIsSendingCode(false);
+        }
+      };
+
+      // CODE ÜBERPRÜFEN
+      const handleVerifyCode = (e) => {
+        e.preventDefault();
+        if (inputCode.trim() === generatedCode && generatedCode !== "") {
+          setAdminError("");
+          setGeneratedCode(""); // Code entwerten
+          setInputCode("");
+          setView("adminPanel");
+        } else {
+          setAdminError("Falscher oder abgelaufener Code!");
+        }
+      };
+
       const handleSubmit = (e) => {
         e.preventDefault();
         if (!isAppOpen) return;
@@ -122,7 +174,7 @@
         setApplications(updatedApps);
         localStorage.setItem("mbjc_applications", JSON.stringify(updatedApps));
 
-        if (CONFIG.webhookUrl) {
+        if (CONFIG.webhookUrl && !CONFIG.webhookUrl.includes("DEIN_DISCORD_WEBHOOK")) {
           fetch(CONFIG.webhookUrl, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -145,17 +197,6 @@
 
         setSubmittedTicket(newApp);
         setView("success");
-      };
-
-      // Passwortprüfung
-      const handleAdminLogin = (e) => {
-        e.preventDefault();
-        if (secureHash(adminPass) === CONFIG.adminHash) {
-          setAdminError(false);
-          setView("adminPanel");
-        } else {
-          setAdminError(true);
-        }
       };
 
       const updateAppStatus = (id, newStatus) => {
@@ -190,7 +231,14 @@
               <i className="fa-solid fa-arrow-left"></i> Zurück zu mbjc.info
             </a>
             <button 
-              onClick={() => setView(view === "adminPanel" ? "form" : "adminLogin")} 
+              onClick={() => {
+                if (view === "adminPanel") {
+                  setView("form");
+                } else {
+                  setView("adminLogin");
+                  setCodeSent(false);
+                }
+              }} 
               className="bg-indigo-600/20 hover:bg-indigo-600/40 border border-indigo-500/30 text-indigo-300 text-xs px-4 py-2 rounded-xl transition font-semibold flex items-center gap-2 shadow-lg"
             >
               <i className="fa-solid fa-user-shield"></i>
@@ -198,29 +246,61 @@
             </button>
           </div>
 
-          {/* VIEW: ADMIN LOGIN */}
+          {/* VIEW: ADMIN LOGIN MIT DISCORD WEBHOOK 2FA CODE */}
           {view === "adminLogin" && (
             <div className="liquid-glass rounded-3xl p-8 max-w-md mx-auto text-center border border-indigo-500/30 shadow-2xl">
               <div className="w-16 h-16 rounded-2xl bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center mx-auto mb-4 text-indigo-400 text-2xl">
-                <i className="fa-solid fa-lock"></i>
+                <i className="fa-solid fa-shield-halved"></i>
               </div>
-              <h2 className="text-2xl font-black mb-2 text-white">Admin-Bereich Login</h2>
-              <p className="text-xs text-slate-400 mb-6">Geschützter Zugang für Team-Administratoren.</p>
+              <h2 className="text-2xl font-black mb-2 text-white">Discord 2FA Login</h2>
+              <p className="text-xs text-slate-400 mb-6">
+                {!codeSent 
+                  ? "Klicke auf den Button, um einen 1-maligen Code an euren Discord Admin-Channel zu senden." 
+                  : "Der Code wurde gesendet! Prüfe den Discord-Channel und gib ihn hier ein."}
+              </p>
 
-              <form onSubmit={handleAdminLogin} className="space-y-4">
-                <input 
-                  type="password" 
-                  placeholder="Admin Passwort"
-                  value={adminPass}
-                  onChange={(e) => setAdminPass(e.target.value)}
-                  className="w-full liquid-input p-3.5 rounded-xl text-center text-sm"
-                  required
-                />
-                {adminError && <p className="text-rose-400 text-xs font-semibold">Passwort ungültig!</p>}
-                <button type="submit" className="w-full bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-bold py-3.5 rounded-xl transition text-sm shadow-lg">
-                  Einloggen
-                </button>
-              </form>
+              {!codeSent ? (
+                <div className="space-y-4">
+                  <button 
+                    onClick={sendDiscordAdminCode} 
+                    disabled={isSendingCode}
+                    className="w-full bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-bold py-3.5 px-6 rounded-xl transition text-sm shadow-lg flex items-center justify-center gap-2"
+                  >
+                    {isSendingCode ? <i className="fa-solid fa-spinner fa-spin"></i> : <i className="fa-brands fa-discord"></i>}
+                    <span>Code an Discord senden</span>
+                  </button>
+                  {adminError && <p className="text-rose-400 text-xs font-semibold">{adminError}</p>}
+                </div>
+              ) : (
+                <form onSubmit={handleVerifyCode} className="space-y-4">
+                  <input 
+                    type="text" 
+                    placeholder="6-stelligen Code eingeben"
+                    value={inputCode}
+                    onChange={(e) => setInputCode(e.target.value)}
+                    className="w-full liquid-input p-3.5 rounded-xl text-center text-lg font-mono tracking-widest"
+                    maxLength="6"
+                    required
+                  />
+                  {adminError && <p className="text-rose-400 text-xs font-semibold">{adminError}</p>}
+                  
+                  <div className="flex gap-2">
+                    <button 
+                      type="button" 
+                      onClick={sendDiscordAdminCode}
+                      className="w-1/3 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-3 rounded-xl text-xs transition"
+                    >
+                      Neu senden
+                    </button>
+                    <button 
+                      type="submit" 
+                      className="w-2/3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-xl transition text-sm shadow-lg"
+                    >
+                      Einloggen
+                    </button>
+                  </div>
+                </form>
+              )}
             </div>
           )}
 
