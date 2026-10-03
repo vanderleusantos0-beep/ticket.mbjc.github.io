@@ -10,33 +10,69 @@
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <style>
+    @keyframes pulseGlow {
+      0%, 100% { transform: scale(1) translate(-50%, -50%); opacity: 0.15; }
+      50% { transform: scale(1.15) translate(-48%, -52%); opacity: 0.25; }
+    }
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes shimmer {
+      0% { background-position: -200% 0; }
+      100% { background-position: 200% 0; }
+    }
     body {
       background: radial-gradient(circle at 50% -20%, #1e1b4b, #090d16 60%, #030712);
       color: #f8fafc;
       font-family: system-ui, -apple-system, sans-serif;
       min-height: 100vh;
+      overflow-x: hidden;
+    }
+    .animate-fade-in { animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+    .glow-bg {
+      position: absolute;
+      top: 15%;
+      left: 50%;
+      width: 500px;
+      height: 500px;
+      background: radial-gradient(circle, rgba(99, 102, 241, 0.25) 0%, rgba(139, 92, 246, 0.1) 40%, rgba(0, 0, 0, 0) 70%);
+      pointer-events: none;
+      z-index: 0;
+      animation: pulseGlow 8s ease-in-out infinite;
     }
     .liquid-glass {
       background: rgba(15, 23, 42, 0.65);
-      backdrop-filter: blur(20px) saturate(180%);
-      -webkit-backdrop-filter: blur(20px) saturate(180%);
+      backdrop-filter: blur(24px) saturate(180%);
+      -webkit-backdrop-filter: blur(24px) saturate(180%);
       border: 1px solid rgba(255, 255, 255, 0.08);
       box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.1);
     }
     .liquid-input {
-      background: rgba(15, 23, 42, 0.8);
+      background: rgba(15, 23, 42, 0.85);
       border: 1px solid rgba(255, 255, 255, 0.1);
       color: #fff;
-      transition: all 0.2s ease;
+      transition: all 0.25s ease;
     }
     .liquid-input:focus {
       border-color: #6366f1;
       outline: none;
-      box-shadow: 0 0 15px rgba(99, 102, 241, 0.3);
+      box-shadow: 0 0 20px rgba(99, 102, 241, 0.35);
+    }
+    .btn-shimmer {
+      background-size: 200% 100%;
+      background-image: linear-gradient(110deg, #4f46e5 0%, #7c3aed 45%, #a855f7 50%, #7c3aed 55%, #4f46e5 100%);
+      transition: all 0.3s ease;
+    }
+    .btn-shimmer:hover {
+      animation: shimmer 1.5s infinite;
+      box-shadow: 0 0 25px rgba(99, 102, 241, 0.5);
     }
   </style>
 </head>
-<body class="p-4 md:p-10 flex flex-col items-center justify-between">
+<body class="p-4 md:p-10 flex flex-col items-center justify-between relative">
+
+  <div class="glow-bg"></div>
 
   <div id="root" class="w-full max-w-4xl z-10"></div>
 
@@ -45,15 +81,15 @@
       serverName: "MBJC Network",
       mainSite: "http://mbjc.info/",
       discordUrl: "https://discord.gg/2Nuwdyr4tZ",
-      // FÜGE HIER DEINE DISCORD WEBHOOK URL EIN:
-      webhookUrl: "DEIN_DISCORD_WEBHOOK_HIER_EINFUEGEN"
+      // DEIN AKTIVER DISCORD WEBHOOK:
+      webhookUrl: "https://discord.com/api/webhooks/1555967152463417437/JNNZQHyWkGE6HORhaaQPe5kkv8MYgr_c7oAYbVhoI1pBXHTq58oCNg9SI_-Tbq-q5Nsp"
     };
 
     function App() {
       const [view, setView] = React.useState("form"); // "form", "success", "adminLogin", "adminPanel"
       const [role, setRole] = React.useState("discord_mod");
       
-      // Admin 2FA Code Status
+      // Admin 2FA Code
       const [codeSent, setCodeSent] = React.useState(false);
       const [generatedCode, setGeneratedCode] = React.useState("");
       const [inputCode, setInputCode] = React.useState("");
@@ -102,17 +138,11 @@
         setFormData({ ...formData, [e.target.name]: e.target.value });
       };
 
-      // 1-MAL-CODE GENERIEREN UND ÜBER DISCORD WEBHOOK SENDEN
+      // 2FA CODE GENERIEREN UND VIA WEBHOOK AN DISCORD SENDEN
       const sendDiscordAdminCode = async () => {
-        if (!CONFIG.webhookUrl || CONFIG.webhookUrl.includes("DEIN_DISCORD_WEBHOOK")) {
-          setAdminError("Bitte trage deine Discord Webhook URL in CONFIG.webhookUrl ein!");
-          return;
-        }
-
         setIsSendingCode(true);
         setAdminError("");
 
-        // Generiere zufälligen 6-stelligen Code
         const newCode = Math.floor(100000 + Math.random() * 900000).toString();
         setGeneratedCode(newCode);
 
@@ -121,11 +151,11 @@
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              content: "🔐 **MBJC Admin Login Anforderung**",
+              content: "🔐 **MBJC Admin Panel Login-Anforderung**",
               embeds: [{
-                title: "🛡️ Einmaliger Admin-Sicherheitscode",
+                title: "🛡️ Einmaliger 2FA Sicherheitscode",
                 color: 6507761,
-                description: `Ein Admin versucht sich gerade auf **ticket.mbjc.info** einzuloggen.\n\nDein Code lautet: **\`${newCode}\`**\n\n*(Dieser Code ist nur für einen Login-Versuch gültig)*`,
+                description: `Ein Administrator versucht sich auf **ticket.mbjc.info** einzuloggen.\n\nDein Sicherheitscode lautet: **\`${newCode}\`**\n\n*(Der Code verfällt nach der Eingabe automatisch)*`,
                 footer: { text: "MBJC Security System" },
                 timestamp: new Date().toISOString()
               }]
@@ -135,25 +165,24 @@
           if (res.ok || res.status === 204) {
             setCodeSent(true);
           } else {
-            setAdminError("Fehler beim Senden über Discord Webhook.");
+            setAdminError("Konnte den Code nicht an Discord senden. Webhook prüfen.");
           }
         } catch (err) {
-          setAdminError("Netzwerkfehler beim Senden des Codes.");
+          setAdminError("Fehler beim Erreichbarkeitstest der Discord-API.");
         } finally {
           setIsSendingCode(false);
         }
       };
 
-      // CODE ÜBERPRÜFEN
       const handleVerifyCode = (e) => {
         e.preventDefault();
         if (inputCode.trim() === generatedCode && generatedCode !== "") {
           setAdminError("");
-          setGeneratedCode(""); // Code entwerten
+          setGeneratedCode("");
           setInputCode("");
           setView("adminPanel");
         } else {
-          setAdminError("Falscher oder abgelaufener Code!");
+          setAdminError("Ungültiger oder bereits verwendeter Code!");
         }
       };
 
@@ -174,26 +203,28 @@
         setApplications(updatedApps);
         localStorage.setItem("mbjc_applications", JSON.stringify(updatedApps));
 
-        if (CONFIG.webhookUrl && !CONFIG.webhookUrl.includes("DEIN_DISCORD_WEBHOOK")) {
-          fetch(CONFIG.webhookUrl, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              embeds: [{
-                title: `📥 Neue Bewerbung: ${newApp.role}`,
-                color: 6547697,
-                fields: [
-                  { name: "Ticket ID", value: newApp.id, inline: true },
-                  { name: "Discord Tag", value: formData.discordTag, inline: true },
-                  { name: "Alter", value: formData.age, inline: true },
-                  { name: "Motivation", value: formData.motivation || "Keine Angabe" }
-                ],
-                footer: { text: "MBJC Team Bewerbungssystem" },
-                timestamp: new Date().toISOString()
-              }]
-            })
-          }).catch(err => console.log("Webhook Fehler:", err));
-        }
+        // Send Webhook benachrichtigung
+        fetch(CONFIG.webhookUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            embeds: [{
+              title: `📥 Neue Team-Bewerbung: ${newApp.role}`,
+              color: 6547697,
+              fields: [
+                { name: "🎫 Ticket ID", value: `\`${newApp.id}\``, inline: true },
+                { name: "👤 Discord Tag", value: formData.discordTag, inline: true },
+                { name: "🎂 Alter", value: `${formData.age} Jahre`, inline: true },
+                { name: "⏱️ Zeit / Woche", value: `${formData.weeklyHours} Std. (${formData.activeTimes})`, inline: false },
+                { name: "💡 Motivation", value: formData.motivation || "Keine Angabe" },
+                { name: "📜 Moderations-Erfahrung", value: formData.experience || "Keine Angabe" },
+                { name: "🚨 Szenario 1 Antwort", value: formData.scenario1 || "Keine Angabe" }
+              ],
+              footer: { text: "MBJC Bewerbungssystem • ticket.mbjc.info" },
+              timestamp: new Date().toISOString()
+            }]
+          })
+        }).catch(err => console.log("Webhook Fehler:", err));
 
         setSubmittedTicket(newApp);
         setView("success");
@@ -217,6 +248,19 @@
         }
       };
 
+      const copyAsDiscordMarkdown = (app) => {
+        const text = `**[MBJC BEWERBUNG - ${app.id}]**\n` +
+          `• **Rolle:** ${app.role}\n` +
+          `• **User:** ${app.data.discordTag} (${app.data.age} Jahre)\n` +
+          `• **Zeit:** ${app.data.weeklyHours} Std/Woche (${app.data.activeTimes})\n` +
+          `• **Erfahrung:** ${app.data.experience}\n` +
+          `• **Motivation:** ${app.data.motivation}\n` +
+          `• **Szenario 1:** ${app.data.scenario1}\n` +
+          `• **Szenario 2:** ${app.data.scenario2}`;
+        navigator.clipboard.writeText(text);
+        alert("Bewerbung als Discord-Markdown in die Zwischenablage kopiert!");
+      };
+
       const filteredApps = applications.filter(app => {
         const matchesSearch = app.data.discordTag.toLowerCase().includes(searchTerm.toLowerCase()) || app.id.toLowerCase().includes(searchTerm.toLowerCase());
         const matchesStatus = filterStatus === "Alle" || app.status === filterStatus;
@@ -224,11 +268,11 @@
       });
 
       return (
-        <div className="w-full">
-          {/* TOP NAVIGATION */}
+        <div className="w-full animate-fade-in">
+          {/* HEADER BAR */}
           <div className="flex justify-between items-center mb-8">
-            <a href={CONFIG.mainSite} className="flex items-center gap-2 text-slate-300 hover:text-white font-bold text-sm transition">
-              <i className="fa-solid fa-arrow-left"></i> Zurück zu mbjc.info
+            <a href={CONFIG.mainSite} className="flex items-center gap-2 text-slate-300 hover:text-white font-bold text-sm transition transform hover:-translate-x-1">
+              <i className="fa-solid fa-arrow-left text-indigo-400"></i> Zurück zu mbjc.info
             </a>
             <button 
               onClick={() => {
@@ -239,24 +283,24 @@
                   setCodeSent(false);
                 }
               }} 
-              className="bg-indigo-600/20 hover:bg-indigo-600/40 border border-indigo-500/30 text-indigo-300 text-xs px-4 py-2 rounded-xl transition font-semibold flex items-center gap-2 shadow-lg"
+              className="bg-indigo-600/20 hover:bg-indigo-600/40 border border-indigo-500/30 text-indigo-300 text-xs px-4 py-2.5 rounded-xl transition font-semibold flex items-center gap-2 shadow-lg backdrop-blur-md"
             >
               <i className="fa-solid fa-user-shield"></i>
               {view === "adminPanel" ? "Bewerbungsformular" : "Admin Panel Login"}
             </button>
           </div>
 
-          {/* VIEW: ADMIN LOGIN MIT DISCORD WEBHOOK 2FA CODE */}
+          {/* VIEW: ADMIN LOGIN WITH DISCORD 2FA */}
           {view === "adminLogin" && (
-            <div className="liquid-glass rounded-3xl p-8 max-w-md mx-auto text-center border border-indigo-500/30 shadow-2xl">
-              <div className="w-16 h-16 rounded-2xl bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center mx-auto mb-4 text-indigo-400 text-2xl">
+            <div className="liquid-glass rounded-3xl p-8 max-w-md mx-auto text-center border border-indigo-500/30 shadow-2xl relative overflow-hidden">
+              <div className="w-16 h-16 rounded-2xl bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center mx-auto mb-4 text-indigo-400 text-3xl shadow-inner">
                 <i className="fa-solid fa-shield-halved"></i>
               </div>
-              <h2 className="text-2xl font-black mb-2 text-white">Discord 2FA Login</h2>
-              <p className="text-xs text-slate-400 mb-6">
+              <h2 className="text-2xl font-black mb-2 text-white">Discord 2FA Admin Login</h2>
+              <p className="text-xs text-slate-400 mb-6 leading-relaxed">
                 {!codeSent 
-                  ? "Klicke auf den Button, um einen 1-maligen Code an euren Discord Admin-Channel zu senden." 
-                  : "Der Code wurde gesendet! Prüfe den Discord-Channel und gib ihn hier ein."}
+                  ? "Klicke auf den Button, um einen Sicherheitscode direkt an euren Discord-Channel zu senden." 
+                  : "Der Code wurde versendet! Gib den 6-stelligen Code aus Discord hier ein."}
               </p>
 
               {!codeSent ? (
@@ -264,10 +308,10 @@
                   <button 
                     onClick={sendDiscordAdminCode} 
                     disabled={isSendingCode}
-                    className="w-full bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-bold py-3.5 px-6 rounded-xl transition text-sm shadow-lg flex items-center justify-center gap-2"
+                    className="w-full btn-shimmer text-white font-bold py-3.5 px-6 rounded-xl transition text-sm shadow-lg flex items-center justify-center gap-2"
                   >
-                    {isSendingCode ? <i className="fa-solid fa-spinner fa-spin"></i> : <i className="fa-brands fa-discord"></i>}
-                    <span>Code an Discord senden</span>
+                    {isSendingCode ? <i className="fa-solid fa-spinner fa-spin"></i> : <i className="fa-brands fa-discord text-lg"></i>}
+                    <span>Code an Discord Senden</span>
                   </button>
                   {adminError && <p className="text-rose-400 text-xs font-semibold">{adminError}</p>}
                 </div>
@@ -275,10 +319,10 @@
                 <form onSubmit={handleVerifyCode} className="space-y-4">
                   <input 
                     type="text" 
-                    placeholder="6-stelligen Code eingeben"
+                    placeholder="6-stelliger Code"
                     value={inputCode}
                     onChange={(e) => setInputCode(e.target.value)}
-                    className="w-full liquid-input p-3.5 rounded-xl text-center text-lg font-mono tracking-widest"
+                    className="w-full liquid-input p-3.5 rounded-xl text-center text-xl font-mono tracking-widest"
                     maxLength="6"
                     required
                   />
@@ -294,7 +338,7 @@
                     </button>
                     <button 
                       type="submit" 
-                      className="w-2/3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 rounded-xl transition text-sm shadow-lg"
+                      className="w-2/3 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-bold py-3 rounded-xl transition text-sm shadow-lg"
                     >
                       Einloggen
                     </button>
@@ -308,14 +352,15 @@
           {view === "adminPanel" && (
             <div className="liquid-glass rounded-3xl p-6 md:p-8">
               
-              <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 mb-8 flex flex-col md:flex-row items-center justify-between gap-4">
+              {/* BEWERBUNGSPHASE TOGGLE */}
+              <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 mb-8 flex flex-col md:flex-row items-center justify-between gap-4 shadow-md">
                 <div>
                   <h3 className="text-sm font-bold text-white flex items-center gap-2">
                     <i className="fa-solid fa-toggle-on text-indigo-400"></i> Status der Bewerbungsphase
                   </h3>
                   <p className="text-xs text-slate-400 mt-0.5">
-                    Aktuell: <strong className={isAppOpen ? "text-emerald-400" : "text-rose-400"}>
-                      {isAppOpen ? "Bewerbungen GEÖFFNET" : "Bewerbungen GESCHLOSSEN"}
+                    Aktueller Zustand: <strong className={isAppOpen ? "text-emerald-400" : "text-rose-400"}>
+                      {isAppOpen ? "Bewerbungen GEÖFFNET" : "Bewerbungen GESCHLOSSEN (Bewerbungsstopp)"}
                     </strong>
                   </p>
                 </div>
@@ -340,6 +385,7 @@
                 </div>
               </div>
 
+              {/* DASHBOARD HEADER */}
               <div className="flex flex-col md:flex-row md:items-center justify-between pb-6 border-b border-slate-800 gap-4 mb-6">
                 <div>
                   <h2 className="text-2xl font-black text-white flex items-center gap-2">
@@ -354,12 +400,12 @@
                     placeholder="Suchen..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="liquid-input px-3 py-1.5 rounded-xl text-xs w-36"
+                    className="liquid-input px-3 py-2 rounded-xl text-xs w-36"
                   />
                   <select 
                     value={filterStatus}
                     onChange={(e) => setFilterStatus(e.target.value)}
-                    className="liquid-input px-3 py-1.5 rounded-xl text-xs bg-slate-900"
+                    className="liquid-input px-3 py-2 rounded-xl text-xs bg-slate-900"
                   >
                     <option value="Alle">Alle Status</option>
                     <option value="Offen">Offen</option>
@@ -372,24 +418,25 @@
 
               {filteredApps.length === 0 ? (
                 <div className="text-center py-12 text-slate-500">
-                  <i className="fa-solid fa-inbox text-4xl mb-3"></i>
-                  <p>Keine Bewerbungen gefunden.</p>
+                  <i className="fa-solid fa-inbox text-4xl mb-3 opacity-50"></i>
+                  <p className="text-sm">Keine Bewerbungen in dieser Kategorie vorhanden.</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="md:col-span-1 space-y-3 max-h-[500px] overflow-y-auto pr-2">
+                  {/* LISTE */}
+                  <div className="md:col-span-1 space-y-3 max-h-[520px] overflow-y-auto pr-2">
                     {filteredApps.map((app) => (
                       <div 
                         key={app.id} 
                         onClick={() => setSelectedApp(app)}
-                        className={`p-4 rounded-2xl cursor-pointer border transition ${selectedApp?.id === app.id ? 'bg-indigo-600/30 border-indigo-500' : 'bg-slate-900/40 border-slate-800 hover:border-slate-700'}`}
+                        className={`p-4 rounded-2xl cursor-pointer border transition transform hover:-translate-y-0.5 ${selectedApp?.id === app.id ? 'bg-indigo-600/30 border-indigo-500 shadow-md' : 'bg-slate-900/40 border-slate-800 hover:border-slate-700'}`}
                       >
                         <div className="flex justify-between items-start mb-1">
                           <span className="text-xs font-mono text-indigo-400 font-bold">{app.id}</span>
                           <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
-                            app.status === 'Angenommen' ? 'bg-emerald-500/20 text-emerald-400' :
-                            app.status === 'Abgelehnt' ? 'bg-rose-500/20 text-rose-400' :
-                            app.status === 'In Bearbeitung' ? 'bg-amber-500/20 text-amber-400' : 'bg-slate-700 text-slate-300'
+                            app.status === 'Angenommen' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' :
+                            app.status === 'Abgelehnt' ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30' :
+                            app.status === 'In Bearbeitung' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'bg-slate-700 text-slate-300'
                           }`}>
                             {app.status}
                           </span>
@@ -400,7 +447,8 @@
                     ))}
                   </div>
 
-                  <div className="md:col-span-2 bg-slate-900/60 border border-slate-800 rounded-2xl p-6 max-h-[500px] overflow-y-auto">
+                  {/* DETAILS */}
+                  <div className="md:col-span-2 bg-slate-900/60 border border-slate-800 rounded-2xl p-6 max-h-[520px] overflow-y-auto">
                     {selectedApp ? (
                       <div className="space-y-4">
                         <div className="flex justify-between items-start border-b border-slate-800 pb-3">
@@ -409,9 +457,14 @@
                             <h3 className="text-xl font-bold text-white">{selectedApp.data.discordTag}</h3>
                             <p className="text-xs text-slate-400">{selectedApp.role} &bull; Alter: {selectedApp.data.age}</p>
                           </div>
-                          <button onClick={() => deleteApp(selectedApp.id)} className="text-rose-400 text-xs font-bold">
-                            <i className="fa-solid fa-trash mr-1"></i> Löschen
-                          </button>
+                          <div className="flex items-center gap-2">
+                            <button onClick={() => copyAsDiscordMarkdown(selectedApp)} className="text-indigo-400 hover:text-indigo-300 text-xs font-bold bg-indigo-500/10 px-3 py-1.5 rounded-lg border border-indigo-500/20">
+                              <i className="fa-solid fa-copy mr-1"></i> Kopieren
+                            </button>
+                            <button onClick={() => deleteApp(selectedApp.id)} className="text-rose-400 hover:text-rose-300 text-xs font-bold bg-rose-500/10 px-3 py-1.5 rounded-lg border border-rose-500/20">
+                              <i className="fa-solid fa-trash"></i>
+                            </button>
+                          </div>
                         </div>
 
                         <div>
@@ -422,7 +475,7 @@
                                 key={st} 
                                 onClick={() => updateAppStatus(selectedApp.id, st)}
                                 className={`text-xs px-3 py-1.5 rounded-xl font-bold border transition ${
-                                  selectedApp.status === st ? 'bg-indigo-600 text-white border-indigo-500' : 'bg-slate-800 text-slate-400 border-slate-700'
+                                  selectedApp.status === st ? 'bg-indigo-600 text-white border-indigo-500 shadow-md' : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-white'
                                 }`}
                               >
                                 {st}
@@ -432,23 +485,23 @@
                         </div>
 
                         <div className="space-y-3 text-sm pt-2">
-                          <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800">
-                            <p className="text-xs text-indigo-400 font-bold">Arbeitszeit:</p>
+                          <div className="bg-slate-900/80 p-3.5 rounded-xl border border-slate-800">
+                            <p className="text-xs text-indigo-400 font-bold">Arbeitszeit & Aktivität:</p>
                             <p className="text-slate-200 text-xs mt-1">{selectedApp.data.weeklyHours} Std./Woche ({selectedApp.data.activeTimes})</p>
                           </div>
-                          <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800">
+                          <div className="bg-slate-900/80 p-3.5 rounded-xl border border-slate-800">
                             <p className="text-xs text-indigo-400 font-bold">Erfahrung:</p>
                             <p className="text-slate-200 text-xs mt-1 whitespace-pre-wrap">{selectedApp.data.experience}</p>
                           </div>
-                          <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800">
+                          <div className="bg-slate-900/80 p-3.5 rounded-xl border border-slate-800">
                             <p className="text-xs text-indigo-400 font-bold">Motivation:</p>
                             <p className="text-slate-200 text-xs mt-1 whitespace-pre-wrap">{selectedApp.data.motivation}</p>
                           </div>
-                          <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800">
+                          <div className="bg-slate-900/80 p-3.5 rounded-xl border border-slate-800">
                             <p className="text-xs text-indigo-400 font-bold">Szenario 1:</p>
                             <p className="text-slate-200 text-xs mt-1 whitespace-pre-wrap">{selectedApp.data.scenario1}</p>
                           </div>
-                          <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800">
+                          <div className="bg-slate-900/80 p-3.5 rounded-xl border border-slate-800">
                             <p className="text-xs text-indigo-400 font-bold">Szenario 2:</p>
                             <p className="text-slate-200 text-xs mt-1 whitespace-pre-wrap">{selectedApp.data.scenario2}</p>
                           </div>
@@ -457,7 +510,7 @@
                     ) : (
                       <div className="h-full flex flex-col items-center justify-center text-slate-500 py-12">
                         <i className="fa-regular fa-hand-pointer text-3xl mb-2"></i>
-                        <p className="text-xs">Wähle links eine Bewerbung aus.</p>
+                        <p className="text-xs">Wähle links eine Bewerbung aus, um Details anzuzeigen.</p>
                       </div>
                     )}
                   </div>
@@ -466,29 +519,33 @@
             </div>
           )}
 
-          {/* VIEW: USER FORMULAR */}
+          {/* VIEW: USER BEWERBUNGSFORMULAR */}
           {view === "form" && (
             <div className="liquid-glass rounded-3xl p-6 md:p-10 border border-white/10 shadow-2xl">
               <div className="text-center mb-8">
-                <h1 className="text-3xl md:text-4xl font-black text-white">MBJC Team Bewerbung</h1>
-                <p className="text-xs md:text-sm text-slate-400 mt-1">Wähle deine gewünschte Rolle und bewerbe dich für unser Team.</p>
+                <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-xs font-semibold mb-3">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                  MBJC Team Recruitment
+                </span>
+                <h1 className="text-3xl md:text-4xl font-black text-white tracking-tight">Team Bewerbung</h1>
+                <p className="text-xs md:text-sm text-slate-400 mt-1">Wähle deine gewünschte Position und werde Teil unseres Serverteams.</p>
               </div>
 
               {!isAppOpen ? (
                 <div className="bg-rose-500/10 border border-rose-500/30 rounded-2xl p-8 text-center my-6">
-                  <div className="w-16 h-16 rounded-2xl bg-rose-500/20 text-rose-400 flex items-center justify-center mx-auto mb-4 text-3xl">
+                  <div className="w-16 h-16 rounded-2xl bg-rose-500/20 text-rose-400 flex items-center justify-center mx-auto mb-4 text-3xl shadow-inner">
                     <i className="fa-solid fa-lock"></i>
                   </div>
                   <h2 className="text-xl font-bold text-white mb-2">Bewerbungsphase aktuell geschlossen</h2>
                   <p className="text-slate-300 text-xs max-w-md mx-auto leading-relaxed">
-                    Derzeit nehmen wir keine neuen Bewerbungen an. Wir benachrichtigen dich auf unserem Discord-Server, sobald die nächste Phase startet!
+                    Derzeit nehmen wir keine neuen Bewerbungen an. Wir benachrichtigen dich auf unserem Discord-Server, sobald die nächste Bewerbungsphase startet!
                   </p>
                   <a 
                     href={CONFIG.discordUrl} 
                     target="_blank" 
-                    className="inline-flex items-center gap-2 mt-6 bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 px-6 rounded-xl text-xs transition"
+                    className="inline-flex items-center gap-2 mt-6 bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3.5 px-6 rounded-xl text-xs transition shadow-lg"
                   >
-                    <i className="fa-brands fa-discord"></i> Zum Discord Server
+                    <i className="fa-brands fa-discord text-base"></i> Zum Discord Server
                   </a>
                 </div>
               ) : (
@@ -497,14 +554,14 @@
                     <button 
                       type="button"
                       onClick={() => setRole("discord_mod")}
-                      className={`py-3.5 rounded-xl text-xs md:text-sm font-bold transition flex items-center justify-center gap-2 ${role === "discord_mod" ? "bg-indigo-600 text-white shadow-lg" : "text-slate-400 hover:text-white"}`}
+                      className={`py-3.5 rounded-xl text-xs md:text-sm font-bold transition flex items-center justify-center gap-2 ${role === "discord_mod" ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-lg" : "text-slate-400 hover:text-white"}`}
                     >
                       <i className="fa-brands fa-discord text-lg"></i> Discord Mod
                     </button>
                     <button 
                       type="button"
                       onClick={() => setRole("tiktok_mod")}
-                      className={`py-3.5 rounded-xl text-xs md:text-sm font-bold transition flex items-center justify-center gap-2 ${role === "tiktok_mod" ? "bg-indigo-600 text-white shadow-lg" : "text-slate-400 hover:text-white"}`}
+                      className={`py-3.5 rounded-xl text-xs md:text-sm font-bold transition flex items-center justify-center gap-2 ${role === "tiktok_mod" ? "bg-gradient-to-r from-indigo-600 to-cyan-600 text-white shadow-lg" : "text-slate-400 hover:text-white"}`}
                     >
                       <i className="fa-brands fa-tiktok text-lg"></i> TikTok Mod
                     </button>
@@ -593,7 +650,7 @@
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-slate-300 mb-1.5">Szenario: Zwei User streiten sich heftig. Wie reagierst du? *</label>
+                    <label className="block text-xs font-bold text-slate-300 mb-1.5">Szenario: Zwei User streiten sich heftig im Chat. Wie reagierst du? *</label>
                     <textarea 
                       name="scenario1" 
                       rows="3" 
@@ -605,24 +662,24 @@
                     ></textarea>
                   </div>
 
-                  <button type="submit" className="w-full bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-bold py-4 px-6 rounded-2xl transition duration-300 shadow-xl shadow-indigo-600/30">
-                    <i className="fa-solid fa-paper-plane mr-2"></i> Bewerbung Absenden
+                  <button type="submit" className="w-full btn-shimmer text-white font-bold py-4 px-6 rounded-2xl transition duration-300 shadow-xl active:scale-95">
+                    <i className="fa-solid fa-paper-plane mr-2"></i> Bewerbung Kostenlos Absenden
                   </button>
                 </form>
               )}
             </div>
           )}
 
-          {/* VIEW: ERFOLG */}
+          {/* VIEW: ERFOLGSANZEIGE */}
           {view === "success" && submittedTicket && (
-            <div className="liquid-glass rounded-3xl p-8 text-center border border-emerald-500/30 max-w-lg mx-auto shadow-2xl">
-              <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center mx-auto mb-4 text-emerald-400 text-3xl">
+            <div className="liquid-glass rounded-3xl p-8 text-center border border-emerald-500/30 max-w-lg mx-auto shadow-2xl animate-fade-in">
+              <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center mx-auto mb-4 text-emerald-400 text-3xl shadow-inner">
                 <i className="fa-solid fa-check"></i>
               </div>
               <h2 className="text-2xl font-black text-white mb-1">Bewerbung Gespeichert!</h2>
-              <p className="text-xs text-slate-400 mb-4">Deine Ticket-Nummer:</p>
+              <p className="text-xs text-slate-400 mb-4">Deine persönliche Ticket-Nummer:</p>
               
-              <div className="bg-slate-900 p-3.5 rounded-xl font-mono text-indigo-400 font-bold text-lg mb-6 border border-slate-800 tracking-wider">
+              <div className="bg-slate-900 p-3.5 rounded-xl font-mono text-indigo-400 font-bold text-lg mb-6 border border-slate-800 tracking-wider shadow-inner">
                 {submittedTicket.id}
               </div>
 
@@ -630,8 +687,8 @@
                 <button onClick={() => setView("form")} className="w-full bg-slate-800 hover:bg-slate-700 text-white font-bold py-3.5 rounded-xl text-xs transition">
                   Zurück
                 </button>
-                <a href={CONFIG.discordUrl} target="_blank" className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3.5 rounded-xl text-xs transition flex items-center justify-center gap-1">
-                  <i className="fa-brands fa-discord"></i> Zum Discord
+                <a href={CONFIG.discordUrl} target="_blank" className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3.5 rounded-xl text-xs transition flex items-center justify-center gap-2 shadow-lg">
+                  <i className="fa-brands fa-discord text-base"></i> Zum Discord
                 </a>
               </div>
             </div>
