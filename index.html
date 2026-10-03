@@ -77,18 +77,17 @@
   <div id="root" class="w-full max-w-4xl z-10"></div>
 
   <script type="text/babel">
-const CONFIG = {
-  serverName: "MBJC Network",
-  mainSite: "http://mbjc.info/",
-  discordUrl: "https://discord.gg/2Nuwdyr4tZ",
-  webhookUrl: "https://discord.com/api/webhooks/1555967152463417437/JNNZQHyWkGE6HORhaaQPe5kkv8MYgr_c7oAYbVhoI1pBXHTq58oCNg9SI_-Tbq-q5Nsp"
-};
+    const CONFIG = {
+      serverName: "MBJC Network",
+      mainSite: "http://mbjc.info/",
+      discordUrl: "https://discord.gg/2Nuwdyr4tZ",
+      webhookUrl: "https://discord.com/api/webhooks/1555967152463417437/JNNZQHyWkGE6HORhaaQPe5kkv8MYgr_c7oAYbVhoI1pBXHTq58oCNg9SI_-Tbq-q5Nsp"
+    };
 
     function App() {
-      const [view, setView] = React.useState("form"); // "form", "success", "adminLogin", "adminPanel"
+      const [view, setView] = React.useState("form");
       const [role, setRole] = React.useState("discord_mod");
       
-      // Admin 2FA Code
       const [codeSent, setCodeSent] = React.useState(false);
       const [generatedCode, setGeneratedCode] = React.useState("");
       const [inputCode, setInputCode] = React.useState("");
@@ -137,8 +136,12 @@ const CONFIG = {
         setFormData({ ...formData, [e.target.name]: e.target.value });
       };
 
-      // 2FA CODE GENERIEREN UND VIA WEBHOOK AN DISCORD SENDEN
       const sendDiscordAdminCode = async () => {
+        if (!CONFIG.webhookUrl || CONFIG.webhookUrl.trim() === "") {
+          setAdminError("Fehler: Keine Webhook-URL vorhanden.");
+          return;
+        }
+
         setIsSendingCode(true);
         setAdminError("");
 
@@ -164,10 +167,10 @@ const CONFIG = {
           if (res.ok || res.status === 204) {
             setCodeSent(true);
           } else {
-            setAdminError("Konnte den Code nicht an Discord senden. Webhook prüfen.");
+            setAdminError("Konnte den Code nicht an Discord senden (Fehler " + res.status + ").");
           }
         } catch (err) {
-          setAdminError("Fehler beim Erreichbarkeitstest der Discord-API.");
+          setAdminError("Netzwerkfehler beim Senden an Discord.");
         } finally {
           setIsSendingCode(false);
         }
@@ -181,7 +184,7 @@ const CONFIG = {
           setInputCode("");
           setView("adminPanel");
         } else {
-          setAdminError("Ungültiger oder bereits verwendeter Code!");
+          setAdminError("Ungültiger oder abgelaufener Code!");
         }
       };
 
@@ -202,28 +205,29 @@ const CONFIG = {
         setApplications(updatedApps);
         localStorage.setItem("mbjc_applications", JSON.stringify(updatedApps));
 
-        // Send Webhook benachrichtigung
-        fetch(CONFIG.webhookUrl, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            embeds: [{
-              title: `📥 Neue Team-Bewerbung: ${newApp.role}`,
-              color: 6547697,
-              fields: [
-                { name: "🎫 Ticket ID", value: `\`${newApp.id}\``, inline: true },
-                { name: "👤 Discord Tag", value: formData.discordTag, inline: true },
-                { name: "🎂 Alter", value: `${formData.age} Jahre`, inline: true },
-                { name: "⏱️ Zeit / Woche", value: `${formData.weeklyHours} Std. (${formData.activeTimes})`, inline: false },
-                { name: "💡 Motivation", value: formData.motivation || "Keine Angabe" },
-                { name: "📜 Moderations-Erfahrung", value: formData.experience || "Keine Angabe" },
-                { name: "🚨 Szenario 1 Antwort", value: formData.scenario1 || "Keine Angabe" }
-              ],
-              footer: { text: "MBJC Bewerbungssystem • ticket.mbjc.info" },
-              timestamp: new Date().toISOString()
-            }]
-          })
-        }).catch(err => console.log("Webhook Fehler:", err));
+        if (CONFIG.webhookUrl) {
+          fetch(CONFIG.webhookUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              embeds: [{
+                title: `📥 Neue Team-Bewerbung: ${newApp.role}`,
+                color: 6547697,
+                fields: [
+                  { name: "🎫 Ticket ID", value: `\`${newApp.id}\``, inline: true },
+                  { name: "👤 Discord Tag", value: formData.discordTag, inline: true },
+                  { name: "🎂 Alter", value: `${formData.age} Jahre`, inline: true },
+                  { name: "⏱️️ Zeit / Woche", value: `${formData.weeklyHours} Std. (${formData.activeTimes})`, inline: false },
+                  { name: "💡 Motivation", value: formData.motivation || "Keine Angabe" },
+                  { name: "📜 Moderations-Erfahrung", value: formData.experience || "Keine Angabe" },
+                  { name: "🚨 Szenario 1 Antwort", value: formData.scenario1 || "Keine Angabe" }
+                ],
+                footer: { text: "MBJC Bewerbungssystem • ticket.mbjc.info" },
+                timestamp: new Date().toISOString()
+              }]
+            })
+          }).catch(err => console.log("Webhook Fehler:", err));
+        }
 
         setSubmittedTicket(newApp);
         setView("success");
@@ -268,7 +272,6 @@ const CONFIG = {
 
       return (
         <div className="w-full animate-fade-in">
-          {/* HEADER BAR */}
           <div className="flex justify-between items-center mb-8">
             <a href={CONFIG.mainSite} className="flex items-center gap-2 text-slate-300 hover:text-white font-bold text-sm transition transform hover:-translate-x-1">
               <i className="fa-solid fa-arrow-left text-indigo-400"></i> Zurück zu mbjc.info
@@ -289,7 +292,6 @@ const CONFIG = {
             </button>
           </div>
 
-          {/* VIEW: ADMIN LOGIN WITH DISCORD 2FA */}
           {view === "adminLogin" && (
             <div className="liquid-glass rounded-3xl p-8 max-w-md mx-auto text-center border border-indigo-500/30 shadow-2xl relative overflow-hidden">
               <div className="w-16 h-16 rounded-2xl bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center mx-auto mb-4 text-indigo-400 text-3xl shadow-inner">
@@ -347,11 +349,8 @@ const CONFIG = {
             </div>
           )}
 
-          {/* VIEW: ADMIN PANEL */}
           {view === "adminPanel" && (
             <div className="liquid-glass rounded-3xl p-6 md:p-8">
-              
-              {/* BEWERBUNGSPHASE TOGGLE */}
               <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 mb-8 flex flex-col md:flex-row items-center justify-between gap-4 shadow-md">
                 <div>
                   <h3 className="text-sm font-bold text-white flex items-center gap-2">
@@ -384,7 +383,6 @@ const CONFIG = {
                 </div>
               </div>
 
-              {/* DASHBOARD HEADER */}
               <div className="flex flex-col md:flex-row md:items-center justify-between pb-6 border-b border-slate-800 gap-4 mb-6">
                 <div>
                   <h2 className="text-2xl font-black text-white flex items-center gap-2">
@@ -422,7 +420,6 @@ const CONFIG = {
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  {/* LISTE */}
                   <div className="md:col-span-1 space-y-3 max-h-[520px] overflow-y-auto pr-2">
                     {filteredApps.map((app) => (
                       <div 
@@ -446,7 +443,6 @@ const CONFIG = {
                     ))}
                   </div>
 
-                  {/* DETAILS */}
                   <div className="md:col-span-2 bg-slate-900/60 border border-slate-800 rounded-2xl p-6 max-h-[520px] overflow-y-auto">
                     {selectedApp ? (
                       <div className="space-y-4">
@@ -518,7 +514,6 @@ const CONFIG = {
             </div>
           )}
 
-          {/* VIEW: USER BEWERBUNGSFORMULAR */}
           {view === "form" && (
             <div className="liquid-glass rounded-3xl p-6 md:p-10 border border-white/10 shadow-2xl">
               <div className="text-center mb-8">
@@ -669,7 +664,6 @@ const CONFIG = {
             </div>
           )}
 
-          {/* VIEW: ERFOLGSANZEIGE */}
           {view === "success" && submittedTicket && (
             <div className="liquid-glass rounded-3xl p-8 text-center border border-emerald-500/30 max-w-lg mx-auto shadow-2xl animate-fade-in">
               <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center mx-auto mb-4 text-emerald-400 text-3xl shadow-inner">
