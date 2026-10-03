@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="de" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MBJC Community | Moderator Bewerbungsportal</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- React & Babel -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  
+  <style>
+    body {
+      background: radial-gradient(circle at 50% -20%, #1e1b4b, #090d16 60%, #030712);
+      color: #f8fafc;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      min-height: 100vh;
+    }
+    .liquid-glass {
+      background: rgba(15, 23, 42, 0.6);
+      backdrop-filter: blur(20px) saturate(180%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), inset 0 1px 1px rgba(255, 255, 255, 0.1);
+    }
+    .liquid-input {
+      background: rgba(10, 15, 30, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: #f8fafc;
+      transition: all 0.25s ease;
+    }
+    .liquid-input:focus {
+      border-color: #6366f1;
+      box-shadow: 0 0 15px rgba(99, 102, 241, 0.25);
+      outline: none;
+    }
+    .liquid-card {
+      background: rgba(30, 41, 59, 0.35);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      transition: all 0.3s ease;
+    }
+    .liquid-card:hover {
+      border-color: rgba(99, 102, 241, 0.4);
+      transform: translateY(-2px);
+    }
+    .glow-indigo {
+      box-shadow: 0 0 35px rgba(99, 102, 241, 0.2);
+    }
+  </style>
+</head>
+<body class="relative flex flex-col items-center justify-between p-4 md:p-8">
+
+  <!-- Background Ambient Glow -->
+  <div class="fixed top-0 left-1/2 -translate-x-1/2 w-[600px] h-[350px] bg-gradient-to-b from-indigo-600/15 to-transparent blur-3xl pointer-events-none -z-10"></div>
+
+  <div id="root" class="w-full max-w-4xl z-10 my-auto"></div>
+
+  <script type="text/babel">
+    const CONFIG = {
+      serverName: "MBJC Community",
+      subdomain: "ticket.mbjc.info",
+      mainDomain: "http://mbjc.info/",
+      discordInvite: "https://discord.gg/2Nuwdyr4tZ",
+      guildId: "1555249622920863804",
+      // Optional: Paste your Discord Webhook URL here to automatically receive applications in Discord!
+      webhookUrl: ""
+    };
+
+    function App() {
+      // Safety Modal State
+      const [showSafetyModal, setShowSafetyModal] = React.useState(true);
+      
+      // Application Form States
+      const [role, setRole] = React.useState("discord"); // "discord" or "tiktok"
+      const [step, setStep] = React.useState(1);
+      const [submitted, setSubmitted] = React.useState(false);
+      const [ticketId, setTicketId] = React.useState("");
+      const [webhookSending, setWebhookSending] = React.useState(false);
+      const [copySuccess, setCopySuccess] = React.useState(false);
+
+      // Form Data
+      const [formData, setFormData] = React.useState({
+        discordUsername: "",
+        discordUserId: "",
+        age: "",
+        hoursPerWeek: "",
+        tiktokHandle: "",
+        modExperience: "",
+        scenarioQuestion: "",
+        motivation: "",
+        strengthsWeaknesses: ""
+      });
+
+      const handleInputChange = (field, value) => {
+        setFormData(prev => ({ ...prev, [field]: value }));
+      };
+
+      const generateTicketId = () => {
+        const rand = Math.floor(1000 + Math.random() * 9000);
+        return `#MBJC-${role.toUpperCase()}-${rand}`;
+      };
+
+      const handleSubmit = async (e) => {
+        e.preventDefault();
+        const generatedId = generateTicketId();
+        setTicketId(generatedId);
+
+        // If Webhook URL is set, send data to Discord
+        if (CONFIG.webhookUrl) {
+          setWebhookSending(true);
+          try {
+            const embed = {
+              title: `📋 Neue Moderator Bewerbung ${generatedId}`,
+              color: role === "discord" ? 0x6366f1 : 0x00f2fe,
+              fields: [
+                { name: "👑 Rolle", value: role === "discord" ? "🛡️ Discord Moderator" : "📱 TikTok Moderator", inline: true },
+                { name: "👤 Discord User", value: `${formData.discordUsername} (\`${formData.discordUserId || "Keine ID"}\`)`, inline: true },
+                { name: "🎂 Alter / Verfügbarkeit", value: `${formData.age} Jahre | ${formData.hoursPerWeek} Std/Woche`, inline: true },
+                ...(role === "tiktok" ? [{ name: "📱 TikTok Handle", value: formData.tiktokHandle || "N/A", inline: true }] : []),
+                { name: "🛠️ Erfahrung", value: formData.modExperience || "Keine Angabe" },
+                { name: "⚖️ Szenario-Lösung", value: formData.scenarioQuestion || "Keine Angabe" },
+                { name: "💡 Motivation", value: formData.motivation || "Keine Angabe" },
+                { name: "⭐ Stärken / Schwächen", value: formData.strengthsWeaknesses || "Keine Angabe" }
+              ],
+              footer: { text: `ticket.mbjc.info • ${new Date().toLocaleString("de-DE")}` }
+            };
+
+            await fetch(CONFIG.webhookUrl, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ embeds: [embed] })
+            });
+          } catch (err) {
+            console.error("Fehler beim Senden per Webhook:", err);
+          } finally {
+            setWebhookSending(false);
+          }
+        }
+
+        setSubmitted(true);
+      };
+
+      // Copy Formatted Application Text for Manual Discord Ticket
+      const copyFormattedMarkdown = () => {
+        const text = `**📋 MBJC MODERATOR BEWERBUNG (${ticketId})**\n` +
+          `• **Rolle:** ${role === "discord" ? "🛡️ Discord Moderator" : "📱 TikTok Moderator"}\n` +
+          `• **Discord:** ${formData.discordUsername} (ID: ${formData.discordUserId})\n` +
+          `• **Alter & Zeit:** ${formData.age} Jahre | ${formData.hoursPerWeek} Std/Woche\n` +
+          (role === "tiktok" ? `• **TikTok:** ${formData.tiktokHandle}\n` : "") +
+          `\n** Erläuterungen:**\n` +
+          `• **Erfahrung:** ${formData.modExperience}\n` +
+          `• **Szenario:** ${formData.scenarioQuestion}\n` +
+          `• **Motivation:** ${formData.motivation}\n` +
+          `• **Stärken/Schwächen:** ${formData.strengthsWeaknesses}`;
+
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+
+        setCopySuccess(true);
+        setTimeout(() => setCopySuccess(false), 3000);
+      };
+
+      return (
+        <div className="w-full flex flex-col items-center">
+          
+          {/* SAFETY & CERTIFICATE MODAL */}
+          {showSafetyModal && (
+            <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-lg flex items-center justify-center p-4">
+              <div className="liquid-glass max-w-lg w-full p-8 rounded-3xl text-center relative border border-indigo-500/30 glow-indigo">
+                <div className="w-16 h-16 rounded-2xl bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center mx-auto mb-5 text-indigo-400 text-3xl shadow-lg">
+                  <i className="fa-solid fa-shield-check"></i>
+                </div>
+                <h2 className="text-2xl font-black text-white mb-2">Sicheres Bewerbungsportal</h2>
+                <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 text-left text-sm text-slate-300 space-y-2 mb-6">
+                  <p className="flex items-center gap-2 text-emerald-400 font-semibold">
+                    <i className="fa-solid fa-lock"></i> Verschlüsselte Datenübertragung
+                  </p>
+                  <p className="text-slate-400 text-xs leading-relaxed">
+                    Willkommen auf <span className="text-indigo-400 font-mono">ticket.mbjc.info</span>! 
+                    Sollte dein Browser kurzzeitig „Nicht sicher“ anzeigen: Das SSL-Zertifikat für diese Subdomain befindet sich aktuell in der automatischen Verifizierung. Deine eingegebenen Daten werden geschützt behandelt.
+                  </p>
+                </div>
+                <button 
+                  onClick={() => setShowSafetyModal(false)}
+                  className="w-full bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-bold py-3.5 px-6 rounded-xl transition duration-200 shadow-lg shadow-indigo-600/30"
+                >
+                  <i className="fa-solid fa-arrow-right mr-2"></i> Jetzt fortfahren & Bewerben
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* BRANDING HEADER */}
+          <header className="text-center mb-8">
+            <a href={CONFIG.mainDomain} className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-xs font-semibold mb-4 hover:bg-indigo-500/20 transition">
+              <i className="fa-solid fa-globe"></i>
+              <span>Zurück zur Hauptseite (mbjc.info)</span>
+            </a>
+            <h1 className="text-3xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-slate-200 to-indigo-300">
+              MBJC Team Bewerbungen
+            </h1>
+            <p className="text-slate-400 text-sm md:text-base mt-2">
+              Bewirb dich als Moderator für unsere Discord Community oder unsere TikTok Live Streams.
+            </p>
+          </header>
+
+          {/* MAIN CONTAINER */}
+          {!submitted ? (
+            <div className="liquid-glass w-full rounded-3xl p-6 md:p-10 border border-white/10 glow-indigo mb-10">
+              
+              {/* ROLE SELECTOR SWITCH */}
+              <div className="mb-8">
+                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">
+                  1. Wähle deine gewünschte Moderator-Rolle
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  
+                  <button
+                    type="button"
+                    onClick={() => { setRole("discord"); setStep(1); }}
+                    className={`liquid-card p-5 rounded-2xl text-left flex items-center gap-4 cursor-pointer transition ${role === 'discord' ? 'border-indigo-500 bg-indigo-600/20 shadow-lg shadow-indigo-500/10' : 'opacity-70'}`}
+                  >
+                    <div className="w-12 h-12 rounded-xl bg-indigo-600/20 text-indigo-400 flex items-center justify-center text-2xl flex-shrink-0">
+                      <i className="fa-brands fa-discord"></i>
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-white">Discord Moderator</h3>
+                      <p className="text-xs text-slate-400">Chat-Moderation, Support-Tickets, Bot-Bedienung & Events</p>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => { setRole("tiktok"); setStep(1); }}
+                    className={`liquid-card p-5 rounded-2xl text-left flex items-center gap-4 cursor-pointer transition ${role === 'tiktok' ? 'border-cyan-500 bg-cyan-600/20 shadow-lg shadow-cyan-500/10' : 'opacity-70'}`}
+                  >
+                    <div className="w-12 h-12 rounded-xl bg-cyan-600/20 text-cyan-400 flex items-center justify-center text-2xl flex-shrink-0">
+                      <i className="fa-brands fa-tiktok"></i>
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-white">TikTok Moderator</h3>
+                      <p className="text-xs text-slate-400">Live-Stream Moderation, Chat-Filterung & Troll-Abwehr</p>
+                    </div>
+                  </button>
+
+                </div>
+              </div>
+
+              {/* STEP PROGRESS INDICATOR */}
+              <div className="flex items-center justify-between mb-8 border-b border-slate-800 pb-4 text-xs font-semibold">
+                <div className={`flex items-center gap-2 ${step >= 1 ? 'text-indigo-400' : 'text-slate-600'}`}>
+                  <span className="w-6 h-6 rounded-full border border-current flex items-center justify-center">1</span>
+                  <span>Persönliches</span>
+                </div>
+                <div className="w-8 h-[1px] bg-slate-800"></div>
+                <div className={`flex items-center gap-2 ${step >= 2 ? 'text-indigo-400' : 'text-slate-600'}`}>
+                  <span className="w-6 h-6 rounded-full border border-current flex items-center justify-center">2</span>
+                  <span>Fragen & Szenarien</span>
+                </div>
+                <div className="w-8 h-[1px] bg-slate-800"></div>
+                <div className={`flex items-center gap-2 ${step >= 3 ? 'text-indigo-400' : 'text-slate-600'}`}>
+                  <span className="w-6 h-6 rounded-full border border-current flex items-center justify-center">3</span>
+                  <span>Motivation</span>
+                </div>
+              </div>
+
+              {/* FORM STEPS */}
+              <form onSubmit={handleSubmit}>
+                
+                {/* STEP 1 */}
+                {step === 1 && (
+                  <div className="space-y-5">
+                    <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                      <i className="fa-solid fa-user-gear text-indigo-400"></i>
+                      <span>Schritt 1: Personendaten & Verfügbarkeit</span>
+                    </h3>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs text-slate-400 mb-1">Discord Benutzername *</label>
+                        <input 
+                          type="text" 
+                          required
+                          placeholder="z.B. alex_nexus"
+                          value={formData.discordUsername}
+                          onChange={(e) => handleInputChange("discordUsername", e.target.value)}
+                          className="w-full liquid-input px-4 py-3 rounded-xl text-sm"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs text-slate-400 mb-1">Discord User ID (Optional)</label>
+                        <input 
+                          type="text" 
+                          placeholder="z.B. 1555249622920863804"
+                          value={formData.discordUserId}
+                          onChange={(e) => handleInputChange("discordUserId", e.target.value)}
+                          className="w-full liquid-input px-4 py-3 rounded-xl text-sm font-mono"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-xs text-slate-400 mb-1">Dein Alter *</label>
+                        <input 
+                          type="number" 
+                          required
+                          min="14"
+                          max="99"
+                          placeholder="z.B. 18"
+                          value={formData.age}
+                          onChange={(e) => handleInputChange("age", e.target.value)}
+                          className="w-full liquid-input px-4 py-3 rounded-xl text-sm"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-xs text-slate-400 mb-1">Mögliche Zeit pro Woche (Std) *</label>
+                        <input 
+                          type="text" 
+                          required
+                          placeholder="z.B. 10 - 15 Stunden"
+                          value={formData.hoursPerWeek}
+                          onChange={(e) => handleInputChange("hoursPerWeek", e.target.value)}
+                          className="w-full liquid-input px-4 py-3 rounded-xl text-sm"
+                        />
+                      </div>
+                    </div>
+
+                    {role === "tiktok" && (
+                      <div>
+                        <label className="block text-xs text-slate-400 mb-1">Dein TikTok Username / Handle *</label>
+                        <input 
+                          type="text" 
+                          required={role === "tiktok"}
+                          placeholder="z.B. @mbjc_official"
+                          value={formData.tiktokHandle}
+                          onChange={(e) => handleInputChange("tiktokHandle", e.target.value)}
+                          className="w-full liquid-input px-4 py-3 rounded-xl text-sm"
+                        />
+                      </div>
+                    )}
+
+                    <div className="pt-4 flex justify-end">
+                      <button 
+                        type="button" 
+                        onClick={() => {
+                          if (formData.discordUsername && formData.age && formData.hoursPerWeek) {
+                            setStep(2);
+                          } else {
+                            alert("Bitte fülle alle Pflichtfelder aus!");
+                          }
+                        }}
+                        className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-6 py-3 rounded-xl text-sm transition"
+                      >
+                        Weiter zu Schritt 2 <i className="fa-solid fa-arrow-right ml-2"></i>
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* STEP 2 */}
+                {step === 2 && (
+                  <div className="space-y-5">
+                    <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                      <i className="fa-solid fa-clipboard-question text-indigo-400"></i>
+                      <span>Schritt 2: Rolle-Spezifische Fragen ({role === "discord" ? "Discord" : "TikTok"})</span>
+                    </h3>
+
+                    <div>
+                      <label className="block text-xs text-slate-400 mb-1">
+                        Hast du bereits Vorerfahrung als Moderator? (Wenn ja, wo & wie lange?) *
+                      </label>
+                      <textarea 
+                        required
+                        rows="3"
+                        placeholder="Erzähle kurz von früheren Servern, TikTok-Streams oder Bots..."
+                        value={formData.modExperience}
+                        onChange={(e) => handleInputChange("modExperience", e.target.value)}
+                        className="w-full liquid-input p-4 rounded-xl text-sm resize-none"
+                      ></textarea>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs text-slate-400 mb-1">
+                        {role === "discord" 
+                          ? "Szenario: Zwei Mitglieder geraten im öffentlichen Chat heftig aneinander und beleidigen sich. Wie reagierst du?"
+                          : "Szenario: Während eines TikTok Live-Streams spammt ein Troll beleidigende Worte. Wie greifst du ein?"} *
+                      </label>
+                      <textarea 
+                        required
+                        rows="3"
+                        placeholder="Beschreibe deine Vorgehensweise Schritt für Schritt..."
+                        value={formData.scenarioQuestion}
+                        onChange={(e) => handleInputChange("scenarioQuestion", e.target.value)}
+                        className="w-full liquid-input p-4 rounded-xl text-sm resize-none"
+                      ></textarea>
+                    </div>
+
+                    <div className="pt-4 flex justify-between">
+                      <button 
+                        type="button" 
+                        onClick={() => setStep(1)}
+                        className="bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold px-6 py-3 rounded-xl text-sm transition"
+                      >
+                        <i className="fa-solid fa-arrow-left mr-2"></i> Zurück
+                      </button>
+
+                      <button 
+                        type="button" 
+                        onClick={() => {
+                          if (formData.modExperience && formData.scenarioQuestion) {
+                            setStep(3);
+                          } else {
+                            alert("Bitte beantworte die Fragen!");
+                          }
+                        }}
+                        className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-6 py-3 rounded-xl text-sm transition"
+                      >
+                        Weiter zu Schritt 3 <i className="fa-solid fa-arrow-right ml-2"></i>
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* STEP 3 */}
+                {step === 3 && (
+                  <div className="space-y-5">
+                    <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                      <i className="fa-solid fa-heart text-indigo-400"></i>
+                      <span>Schritt 3: Motivation & Abschluss</span>
+                    </h3>
+
+                    <div>
+                      <label className="block text-xs text-slate-400 mb-1">
+                        Warum möchtest du genau dem MBJC Team beitreten? *
+                      </label>
+                      <textarea 
+                        required
+                        rows="3"
+                        placeholder="Deine Motivation, was dich an der MBJC Community begeistert..."
+                        value={formData.motivation}
+                        onChange={(e) => handleInputChange("motivation", e.target.value)}
+                        className="w-full liquid-input p-4 rounded-xl text-sm resize-none"
+                      ></textarea>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs text-slate-400 mb-1">
+                        Was sind deine persönlichen Stärken & Schwächen? *
+                      </label>
+                      <textarea 
+                        required
+                        rows="3"
+                        placeholder="z.B. Geduldig, zuverlässig / manchmal zu perfektionistisch..."
+                        value={formData.strengthsWeaknesses}
+                        onChange={(e) => handleInputChange("strengthsWeaknesses", e.target.value)}
+                        className="w-full liquid-input p-4 rounded-xl text-sm resize-none"
+                      ></textarea>
+                    </div>
+
+                    <div className="pt-4 flex justify-between">
+                      <button 
+                        type="button" 
+                        onClick={() => setStep(2)}
+                        className="bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold px-6 py-3 rounded-xl text-sm transition"
+                      >
+                        <i className="fa-solid fa-arrow-left mr-2"></i> Zurück
+                      </button>
+
+                      <button 
+                        type="submit"
+                        disabled={webhookSending}
+                        className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold px-8 py-3 rounded-xl text-sm transition shadow-lg shadow-emerald-600/30 flex items-center gap-2"
+                      >
+                        {webhookSending ? (
+                          <>
+                            <i className="fa-solid fa-spinner fa-spin"></i>
+                            <span>Sende Bewerbung...</span>
+                          </>
+                        ) : (
+                          <>
+                            <i className="fa-solid fa-paper-plane"></i>
+                            <span>Bewerbung Einreichen</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+              </form>
+
+            </div>
+          ) : (
+            /* SUCCESS & TICKET ID SCREEN */
+            <div className="liquid-glass w-full rounded-3xl p-8 md:p-12 text-center border border-emerald-500/30 glow-indigo mb-10">
+              <div className="w-20 h-20 bg-emerald-500/20 text-emerald-400 rounded-3xl border border-emerald-500/40 flex items-center justify-center text-4xl mx-auto mb-6 shadow-xl">
+                <i className="fa-solid fa-circle-check"></i>
+              </div>
+
+              <h2 className="text-3xl font-black text-white mb-2">Bewerbung Eingereicht!</h2>
+              <p className="text-slate-300 text-sm max-w-md mx-auto mb-6">
+                Vielen Dank für deine Bewerbung im MBJC Team. Dein persönliches Ticket wurde erstellt:
+              </p>
+
+              <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 max-w-sm mx-auto mb-8">
+                <p className="text-xs text-slate-400 uppercase font-semibold tracking-wider">Deine Ticket-ID</p>
+                <p className="text-2xl font-mono font-bold text-indigo-400 mt-1">{ticketId}</p>
+              </div>
+
+              <div className="space-y-4 max-w-md mx-auto">
+                <button 
+                  onClick={copyFormattedMarkdown}
+                  className="w-full bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 font-bold py-3 px-6 rounded-xl text-sm transition flex items-center justify-center gap-2"
+                >
+                  <i className="fa-solid fa-copy"></i>
+                  <span>{copySuccess ? "Formatierten Text kopiert!" : "Bewerbung als Text kopieren"}</span>
+                </button>
+
+                <a 
+                  href={CONFIG.discordInvite} 
+                  target="_blank" 
+                  rel="noreferrer"
+                  className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 px-6 rounded-xl text-sm transition flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/30"
+                >
+                  <i className="fa-brands fa-discord"></i>
+                  <span>Discord Server Öffen & Ticket erstellen</span>
+                </a>
+              </div>
+
+              <p className="text-xs text-slate-500 mt-8">
+                Gehe auf unserem Discord-Server in den Support-Kanal und erstelle ein Team-Ticket, falls du Rückfragen hast.
+              </p>
+            </div>
+          )}
+
+          <footer className="text-center text-xs text-slate-500 py-4">
+            &copy; {new Date().getFullYear()} MBJC Community &bull; Subdomain: <span className="font-mono text-indigo-400">ticket.mbjc.info</span>
+          </footer>
+
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
