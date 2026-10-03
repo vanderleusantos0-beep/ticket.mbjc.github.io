@@ -81,6 +81,8 @@
       serverName: "MBJC Network",
       mainSite: "http://mbjc.info/",
       discordUrl: "https://discord.gg/2Nuwdyr4tZ",
+      // ERFORDERLICHER DISCORD USERNAME FÜR ADMIN-LOGIN:
+      requiredAdminUser: "xT",
       webhookUrl: "https://discord.com/api/webhooks/1555967152463417437/JNNZQHyWkGE6HORhaaQPe5kkv8MYgr_c7oAYbVhoI1pBXHTq58oCNg9SI_-Tbq-q5Nsp"
     };
 
@@ -88,11 +90,22 @@
       const [view, setView] = React.useState("form");
       const [role, setRole] = React.useState("discord_mod");
       
+      // Admin Authentication & Username State
+      const [adminUser, setAdminUser] = React.useState("");
       const [codeSent, setCodeSent] = React.useState(false);
       const [generatedCode, setGeneratedCode] = React.useState("");
       const [inputCode, setInputCode] = React.useState("");
       const [adminError, setAdminError] = React.useState("");
       const [isSendingCode, setIsSendingCode] = React.useState(false);
+
+      // Anti-Spam / Rate Limiting States
+      const [cooldown, setCooldown] = React.useState(0);
+      const [failedAttempts, setFailedAttempts] = React.useState(0);
+      const [isLocked, setIsLocked] = React.useState(false);
+
+      // Captcha protection for form submission
+      const [captchaQuestion, setCaptchaQuestion] = React.useState({ num1: 3, num2: 4, answer: 7 });
+      const [captchaInput, setCaptchaInput] = React.useState("");
 
       const [applications, setApplications] = React.useState([]);
       const [selectedApp, setSelectedApp] = React.useState(null);
@@ -115,7 +128,16 @@
 
       const [submittedTicket, setSubmittedTicket] = React.useState(null);
 
+      // Regenerate Captcha
+      const resetCaptcha = () => {
+        const n1 = Math.floor(Math.random() * 9) + 1;
+        const n2 = Math.floor(Math.random() * 9) + 1;
+        setCaptchaQuestion({ num1: n1, num2: n2, answer: n1 + n2 });
+        setCaptchaInput("");
+      };
+
       React.useEffect(() => {
+        resetCaptcha();
         const savedApps = localStorage.getItem("mbjc_applications");
         if (savedApps) {
           try { setApplications(JSON.parse(savedApps)); } catch(e){}
@@ -127,6 +149,15 @@
         }
       }, []);
 
+      // Cooldown Timer Effect
+      React.useEffect(() => {
+        let timer;
+        if (cooldown > 0) {
+          timer = setInterval(() => setCooldown(prev => prev - 1), 1000);
+        }
+        return () => clearInterval(timer);
+      }, [cooldown]);
+
       const toggleAppStatus = (open) => {
         setIsAppOpen(open);
         localStorage.setItem("mbjc_app_status", JSON.stringify(open));
@@ -136,9 +167,23 @@
         setFormData({ ...formData, [e.target.name]: e.target.value });
       };
 
-      const sendDiscordAdminCode = async () => {
-        if (!CONFIG.webhookUrl || CONFIG.webhookUrl.trim() === "") {
-          setAdminError("Fehler: Keine Webhook-URL vorhanden.");
+      // 2FA CODE GENERIEREN MIT USERNAME-PRÜFUNG ('xT') & SPAM-SCHUTZ
+      const sendDiscordAdminCode = async (e) => {
+        if (e) e.preventDefault();
+
+        if (isLocked) {
+          setAdminError("Zu viele Fehlversuche! Login für 5 Minuten gesperrt.");
+          return;
+        }
+
+        if (cooldown > 0) {
+          setAdminError(`Spam-Schutz aktiv! Bitte warte ${cooldown} Sekunden.`);
+          return;
+        }
+
+        // Benutzername strikt überprüfen (z.B. 'xT')
+        if (adminUser.trim() !== CONFIG.requiredAdminUser) {
+          setAdminError("Zugriff verweigert! Ungültiger Admin-Nutzername.");
           return;
         }
 
@@ -153,12 +198,12 @@
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              content: "🔐 **MBJC Admin Panel Login-Anforderung**",
+              content: `🔐 **MBJC Admin 2FA Anforderung von Nutzer \`${adminUser}\`**`,
               embeds: [{
-                title: "🛡️ Einmaliger 2FA Sicherheitscode",
+                title: "🛡️ Sicherheitscode für Login",
                 color: 6507761,
-                description: `Ein Administrator versucht sich auf **ticket.mbjc.info** einzuloggen.\n\nDein Sicherheitscode lautet: **\`${newCode}\`**\n\n*(Der Code verfällt nach der Eingabe automatisch)*`,
-                footer: { text: "MBJC Security System" },
+                description: `Admin **${adminUser}** hat einen 2FA-Code auf **ticket.mbjc.info** angefordert.\n\nSicherheitscode: **\`${newCode}\`**\n\n*(Dieser Code ist nur für einen Login-Versuch gültig)*`,
+                footer: { text: "MBJC Security System • Anti-Spam Aktiviert" },
                 timestamp: new Date().toISOString()
               }]
             })
@@ -166,31 +211,59 @@
 
           if (res.ok || res.status === 204) {
             setCodeSent(true);
+            setCooldown(60); // 60 Sekunden Cooldown gegen Spam
           } else {
-            setAdminError("Konnte den Code nicht an Discord senden (Fehler " + res.status + ").");
+            setAdminError("Konnte den Code nicht an Discord senden (Webhook-Fehler).");
           }
         } catch (err) {
-          setAdminError("Netzwerkfehler beim Senden an Discord.");
+          setAdminError("Netzwerkfehler beim Anfragen an Discord.");
         } finally {
           setIsSendingCode(false);
         }
       };
 
+      // CODE VERIFIZIEREN
       const handleVerifyCode = (e) => {
         e.preventDefault();
+
+        if (isLocked) {
+          setAdminError("Login aufgrund von Spam gesperrt.");
+          return;
+        }
+
         if (inputCode.trim() === generatedCode && generatedCode !== "") {
           setAdminError("");
           setGeneratedCode("");
           setInputCode("");
+          setFailedAttempts(0);
           setView("adminPanel");
         } else {
-          setAdminError("Ungültiger oder abgelaufener Code!");
+          const newFailed = failedAttempts + 1;
+          setFailedAttempts(newFailed);
+          if (newFailed >= 3) {
+            setIsLocked(true);
+            setAdminError("3 Fehlversuche! Das Admin-Panel wurde temporär gesperrt.");
+            setTimeout(() => {
+              setIsLocked(false);
+              setFailedAttempts(0);
+            }, 300000); // 5 Minuten Sperre
+          } else {
+            setAdminError(`Falscher Code! Verbleibende Versuche: ${3 - newFailed}`);
+          }
         }
       };
 
+      // BEWERBUNG ABSENDEN + MATHE-CAPTCHA GEGEN SPAM-BOTS
       const handleSubmit = (e) => {
         e.preventDefault();
         if (!isAppOpen) return;
+
+        // Captcha prüfen
+        if (parseInt(captchaInput) !== captchaQuestion.answer) {
+          alert("Fehler bei der Sicherheitsaufgabe (Captcha)! Bitte versuche es erneut.");
+          resetCaptcha();
+          return;
+        }
 
         const ticketId = "MBJC-TICK-" + Math.floor(1000 + Math.random() * 9000);
         const newApp = {
@@ -217,12 +290,12 @@
                   { name: "🎫 Ticket ID", value: `\`${newApp.id}\``, inline: true },
                   { name: "👤 Discord Tag", value: formData.discordTag, inline: true },
                   { name: "🎂 Alter", value: `${formData.age} Jahre`, inline: true },
-                  { name: "⏱️️ Zeit / Woche", value: `${formData.weeklyHours} Std. (${formData.activeTimes})`, inline: false },
+                  { name: "⏱ Zeit / Woche", value: `${formData.weeklyHours} Std. (${formData.activeTimes})`, inline: false },
                   { name: "💡 Motivation", value: formData.motivation || "Keine Angabe" },
                   { name: "📜 Moderations-Erfahrung", value: formData.experience || "Keine Angabe" },
                   { name: "🚨 Szenario 1 Antwort", value: formData.scenario1 || "Keine Angabe" }
                 ],
-                footer: { text: "MBJC Bewerbungssystem • ticket.mbjc.info" },
+                footer: { text: "MBJC Bewerbungssystem • Spam-Schutz verifiziert" },
                 timestamp: new Date().toISOString()
               }]
             })
@@ -272,6 +345,7 @@
 
       return (
         <div className="w-full animate-fade-in">
+          {/* TOP NAVIGATION */}
           <div className="flex justify-between items-center mb-8">
             <a href={CONFIG.mainSite} className="flex items-center gap-2 text-slate-300 hover:text-white font-bold text-sm transition transform hover:-translate-x-1">
               <i className="fa-solid fa-arrow-left text-indigo-400"></i> Zurück zu mbjc.info
@@ -292,6 +366,7 @@
             </button>
           </div>
 
+          {/* VIEW: ADMIN LOGIN MIT USERNAME xT & SPAM-PROTECTION */}
           {view === "adminLogin" && (
             <div className="liquid-glass rounded-3xl p-8 max-w-md mx-auto text-center border border-indigo-500/30 shadow-2xl relative overflow-hidden">
               <div className="w-16 h-16 rounded-2xl bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center mx-auto mb-4 text-indigo-400 text-3xl shadow-inner">
@@ -300,22 +375,34 @@
               <h2 className="text-2xl font-black mb-2 text-white">Discord 2FA Admin Login</h2>
               <p className="text-xs text-slate-400 mb-6 leading-relaxed">
                 {!codeSent 
-                  ? "Klicke auf den Button, um einen Sicherheitscode direkt an euren Discord-Channel zu senden." 
-                  : "Der Code wurde versendet! Gib den 6-stelligen Code aus Discord hier ein."}
+                  ? "Gib deinen zugelassenen Discord-Usernamen ein, um den Code anzufordern." 
+                  : "Der Code wurde gesendet! Gib den 6-stelligen Code aus Discord hier ein."}
               </p>
 
               {!codeSent ? (
-                <div className="space-y-4">
+                <form onSubmit={sendDiscordAdminCode} className="space-y-4">
+                  <div>
+                    <label className="block text-left text-xs font-bold text-slate-300 mb-1">Discord Admin Username *</label>
+                    <input 
+                      type="text" 
+                      placeholder="z.B. xT"
+                      value={adminUser}
+                      onChange={(e) => setAdminUser(e.target.value)}
+                      className="w-full liquid-input p-3.5 rounded-xl text-center text-sm font-bold"
+                      required
+                    />
+                  </div>
+
                   <button 
-                    onClick={sendDiscordAdminCode} 
-                    disabled={isSendingCode}
-                    className="w-full btn-shimmer text-white font-bold py-3.5 px-6 rounded-xl transition text-sm shadow-lg flex items-center justify-center gap-2"
+                    type="submit" 
+                    disabled={isSendingCode || cooldown > 0 || isLocked}
+                    className="w-full btn-shimmer text-white font-bold py-3.5 px-6 rounded-xl transition text-sm shadow-lg flex items-center justify-center gap-2 disabled:opacity-50"
                   >
                     {isSendingCode ? <i className="fa-solid fa-spinner fa-spin"></i> : <i className="fa-brands fa-discord text-lg"></i>}
-                    <span>Code an Discord Senden</span>
+                    <span>{cooldown > 0 ? `Warte ${cooldown}s` : "Code an Discord Senden"}</span>
                   </button>
                   {adminError && <p className="text-rose-400 text-xs font-semibold">{adminError}</p>}
-                </div>
+                </form>
               ) : (
                 <form onSubmit={handleVerifyCode} className="space-y-4">
                   <input 
@@ -332,14 +419,15 @@
                   <div className="flex gap-2">
                     <button 
                       type="button" 
-                      onClick={sendDiscordAdminCode}
+                      onClick={() => setCodeSent(false)}
                       className="w-1/3 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-3 rounded-xl text-xs transition"
                     >
-                      Neu senden
+                      Zurück
                     </button>
                     <button 
                       type="submit" 
-                      className="w-2/3 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-bold py-3 rounded-xl transition text-sm shadow-lg"
+                      disabled={isLocked}
+                      className="w-2/3 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-bold py-3 rounded-xl transition text-sm shadow-lg disabled:opacity-50"
                     >
                       Einloggen
                     </button>
@@ -349,6 +437,7 @@
             </div>
           )}
 
+          {/* VIEW: ADMIN PANEL */}
           {view === "adminPanel" && (
             <div className="liquid-glass rounded-3xl p-6 md:p-8">
               <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 mb-8 flex flex-col md:flex-row items-center justify-between gap-4 shadow-md">
@@ -358,7 +447,7 @@
                   </h3>
                   <p className="text-xs text-slate-400 mt-0.5">
                     Aktueller Zustand: <strong className={isAppOpen ? "text-emerald-400" : "text-rose-400"}>
-                      {isAppOpen ? "Bewerbungen GEÖFFNET" : "Bewerbungen GESCHLOSSEN (Bewerbungsstopp)"}
+                      {isAppOpen ? "Bewerbungen GEÖFFNET" : "Bewerbungen GESCHLOSSEN"}
                     </strong>
                   </p>
                 </div>
@@ -416,7 +505,7 @@
               {filteredApps.length === 0 ? (
                 <div className="text-center py-12 text-slate-500">
                   <i className="fa-solid fa-inbox text-4xl mb-3 opacity-50"></i>
-                  <p className="text-sm">Keine Bewerbungen in dieser Kategorie vorhanden.</p>
+                  <p className="text-sm">Keine Bewerbungen vorhanden.</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -505,7 +594,7 @@
                     ) : (
                       <div className="h-full flex flex-col items-center justify-center text-slate-500 py-12">
                         <i className="fa-regular fa-hand-pointer text-3xl mb-2"></i>
-                        <p className="text-xs">Wähle links eine Bewerbung aus, um Details anzuzeigen.</p>
+                        <p className="text-xs">Wähle links eine Bewerbung aus.</p>
                       </div>
                     )}
                   </div>
@@ -514,6 +603,7 @@
             </div>
           )}
 
+          {/* VIEW: USER FORMULAR */}
           {view === "form" && (
             <div className="liquid-glass rounded-3xl p-6 md:p-10 border border-white/10 shadow-2xl">
               <div className="text-center mb-8">
@@ -532,7 +622,7 @@
                   </div>
                   <h2 className="text-xl font-bold text-white mb-2">Bewerbungsphase aktuell geschlossen</h2>
                   <p className="text-slate-300 text-xs max-w-md mx-auto leading-relaxed">
-                    Derzeit nehmen wir keine neuen Bewerbungen an. Wir benachrichtigen dich auf unserem Discord-Server, sobald die nächste Bewerbungsphase startet!
+                    Derzeit nehmen wir keine neuen Bewerbungen an. Wir benachrichtigen dich auf unserem Discord-Server, sobald die nächste Phase startet!
                   </p>
                   <a 
                     href={CONFIG.discordUrl} 
@@ -654,6 +744,22 @@
                       className="w-full liquid-input p-3 rounded-xl text-sm" 
                       required
                     ></textarea>
+                  </div>
+
+                  {/* SPAM SCHUTZ: MATHE CAPTCHA */}
+                  <div className="bg-slate-900/60 p-4 rounded-xl border border-slate-800">
+                    <label className="block text-xs font-bold text-indigo-400 mb-1">
+                      <i className="fa-solid fa-robot mr-1"></i> Anti-Spam Sicherheitsaufgabe:
+                    </label>
+                    <p className="text-xs text-slate-300 mb-2">Was ist {captchaQuestion.num1} + {captchaQuestion.num2}?</p>
+                    <input 
+                      type="number" 
+                      placeholder="Ergebnis eingeben" 
+                      value={captchaInput} 
+                      onChange={(e) => setCaptchaInput(e.target.value)} 
+                      className="w-full liquid-input p-2.5 rounded-xl text-sm font-mono" 
+                      required 
+                    />
                   </div>
 
                   <button type="submit" className="w-full btn-shimmer text-white font-bold py-4 px-6 rounded-2xl transition duration-300 shadow-xl active:scale-95">
