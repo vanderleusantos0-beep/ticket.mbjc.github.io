@@ -45,9 +45,7 @@
       serverName: "MBJC Network",
       mainSite: "http://mbjc.info/",
       discordUrl: "https://discord.gg/2Nuwdyr4tZ",
-      // Optional: Füge hier deine Discord Webhook URL ein, um Benachrichtigungen in Discord zu erhalten
       webhookUrl: "",
-      // Passwort für den Admin-Bereich:
       adminPassword: "mbjc2026admin"
     };
 
@@ -61,7 +59,9 @@
       const [searchTerm, setSearchTerm] = React.useState("");
       const [filterStatus, setFilterStatus] = React.useState("Alle");
 
-      // Formulardaten
+      // NEU: Status für die Bewerbungsphase (Offen / Geschlossen)
+      const [isAppOpen, setIsAppOpen] = React.useState(true);
+
       const [formData, setFormData] = React.useState({
         discordTag: "",
         age: "",
@@ -69,7 +69,6 @@
         activeTimes: "Nachmittags & Abends",
         experience: "",
         botKnowledge: "",
-        rulesKnowledge: "",
         motivation: "",
         strengthsWeaknesses: "",
         scenario1: "",
@@ -78,13 +77,23 @@
 
       const [submittedTicket, setSubmittedTicket] = React.useState(null);
 
-      // Lade gespeicherte Bewerbungen aus dem LocalStorage
+      // Lade Daten und Status aus LocalStorage
       React.useEffect(() => {
-        const saved = localStorage.getItem("mbjc_applications");
-        if (saved) {
-          try { setApplications(JSON.parse(saved)); } catch(e){}
+        const savedApps = localStorage.getItem("mbjc_applications");
+        if (savedApps) {
+          try { setApplications(JSON.parse(savedApps)); } catch(e){}
+        }
+
+        const savedStatus = localStorage.getItem("mbjc_app_status");
+        if (savedStatus !== null) {
+          setIsAppOpen(JSON.parse(savedStatus));
         }
       }, []);
+
+      const toggleAppStatus = (open) => {
+        setIsAppOpen(open);
+        localStorage.setItem("mbjc_app_status", JSON.stringify(open));
+      };
 
       const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -92,6 +101,8 @@
 
       const handleSubmit = (e) => {
         e.preventDefault();
+        if (!isAppOpen) return;
+
         const ticketId = "MBJC-TICK-" + Math.floor(1000 + Math.random() * 9000);
         const newApp = {
           id: ticketId,
@@ -105,7 +116,6 @@
         setApplications(updatedApps);
         localStorage.setItem("mbjc_applications", JSON.stringify(updatedApps));
 
-        // Discord Webhook senden falls vorhanden
         if (CONFIG.webhookUrl) {
           fetch(CONFIG.webhookUrl, {
             method: "POST",
@@ -118,9 +128,7 @@
                   { name: "Ticket ID", value: newApp.id, inline: true },
                   { name: "Discord Tag", value: formData.discordTag, inline: true },
                   { name: "Alter", value: formData.age, inline: true },
-                  { name: "Wöchentliche Zeit", value: `${formData.weeklyHours} Std. (${formData.activeTimes})`, inline: false },
-                  { name: "Motivation", value: formData.motivation || "Keine Angabe" },
-                  { name: "Erfahrung", value: formData.experience || "Keine Angabe" }
+                  { name: "Motivation", value: formData.motivation || "Keine Angabe" }
                 ],
                 footer: { text: "MBJC Team Bewerbungssystem" },
                 timestamp: new Date().toISOString()
@@ -190,7 +198,7 @@
                 <i className="fa-solid fa-lock"></i>
               </div>
               <h2 className="text-2xl font-black mb-2 text-white">Admin-Bereich Login</h2>
-              <p className="text-xs text-slate-400 mb-6">Gib das Admin-Passwort ein, um alle Bewerbungen zu prüfen und zu verwalten.</p>
+              <p className="text-xs text-slate-400 mb-6">Gib das Admin-Passwort ein, um Bewerbungen zu verwalten und die Phase umzuschalten.</p>
 
               <form onSubmit={handleAdminLogin} className="space-y-4">
                 <input 
@@ -212,6 +220,41 @@
           {/* VIEW: ADMIN PANEL */}
           {view === "adminPanel" && (
             <div className="liquid-glass rounded-3xl p-6 md:p-8">
+              
+              {/* EINSTELLUNG: BEWERBUNGSPHASE STEUERN */}
+              <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 mb-8 flex flex-col md:flex-row items-center justify-between gap-4">
+                <div>
+                  <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                    <i className="fa-solid fa-[#6366f1] fa-toggle-on text-indigo-400"></i> Status der Bewerbungen
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Aktueller Zustand: <strong className={isAppOpen ? "text-emerald-400" : "text-rose-400"}>
+                      {isAppOpen ? "Bewerbungen sind GEÖFFNET" : "Bewerbungen sind GESCHLOSSEN"}
+                    </strong>
+                  </p>
+                </div>
+
+                <div className="flex gap-2 w-full md:w-auto">
+                  <button 
+                    onClick={() => toggleAppStatus(true)}
+                    className={`flex-1 md:flex-none px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 border ${
+                      isAppOpen ? "bg-emerald-600 text-white border-emerald-500 shadow-lg shadow-emerald-600/30" : "bg-slate-800 text-slate-400 border-slate-700 hover:text-white"
+                    }`}
+                  >
+                    <i className="fa-solid fa-door-open"></i> Öffnen
+                  </button>
+                  <button 
+                    onClick={() => toggleAppStatus(false)}
+                    className={`flex-1 md:flex-none px-4 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 border ${
+                      !isAppOpen ? "bg-rose-600 text-white border-rose-500 shadow-lg shadow-rose-600/30" : "bg-slate-800 text-slate-400 border-slate-700 hover:text-white"
+                    }`}
+                  >
+                    <i className="fa-solid fa-door-closed"></i> Schließen
+                  </button>
+                </div>
+              </div>
+
+              {/* DASHBOARD HEADER */}
               <div className="flex flex-col md:flex-row md:items-center justify-between pb-6 border-b border-slate-800 gap-4 mb-6">
                 <div>
                   <h2 className="text-2xl font-black text-white flex items-center gap-2">
@@ -220,14 +263,13 @@
                   <p className="text-xs text-slate-400">Übersicht aller eingegangenen Team-Bewerbungen ({applications.length})</p>
                 </div>
                 
-                {/* SEARCH & FILTER */}
                 <div className="flex flex-wrap items-center gap-2">
                   <input 
                     type="text" 
-                    placeholder="Suchen (User/ID)..."
+                    placeholder="Suchen..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="liquid-input px-3 py-1.5 rounded-xl text-xs w-40"
+                    className="liquid-input px-3 py-1.5 rounded-xl text-xs w-36"
                   />
                   <select 
                     value={filterStatus}
@@ -246,12 +288,12 @@
               {filteredApps.length === 0 ? (
                 <div className="text-center py-12 text-slate-500">
                   <i className="fa-solid fa-inbox text-4xl mb-3"></i>
-                  <p>Keine Bewerbungen gefunden.</p>
+                  <p>Keine Bewerbungen vorhanden.</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  {/* LISTE DER BEWERBUNGEN */}
-                  <div className="md:col-span-1 space-y-3 max-h-[600px] overflow-y-auto pr-2">
+                  {/* LISTE */}
+                  <div className="md:col-span-1 space-y-3 max-h-[500px] overflow-y-auto pr-2">
                     {filteredApps.map((app) => (
                       <div 
                         key={app.id} 
@@ -261,45 +303,43 @@
                         <div className="flex justify-between items-start mb-1">
                           <span className="text-xs font-mono text-indigo-400 font-bold">{app.id}</span>
                           <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
-                            app.status === 'Angenommen' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' :
-                            app.status === 'Abgelehnt' ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30' :
-                            app.status === 'In Bearbeitung' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'bg-slate-700 text-slate-300'
+                            app.status === 'Angenommen' ? 'bg-emerald-500/20 text-emerald-400' :
+                            app.status === 'Abgelehnt' ? 'bg-rose-500/20 text-rose-400' :
+                            app.status === 'In Bearbeitung' ? 'bg-amber-500/20 text-amber-400' : 'bg-slate-700 text-slate-300'
                           }`}>
                             {app.status}
                           </span>
                         </div>
                         <p className="font-bold text-sm text-white">{app.data.discordTag}</p>
                         <p className="text-xs text-slate-400">{app.role}</p>
-                        <p className="text-[10px] text-slate-500 mt-2">{app.date}</p>
                       </div>
                     ))}
                   </div>
 
-                  {/* DETAILANSICHT */}
-                  <div className="md:col-span-2 bg-slate-900/60 border border-slate-800 rounded-2xl p-6 max-h-[600px] overflow-y-auto">
+                  {/* DETAILS */}
+                  <div className="md:col-span-2 bg-slate-900/60 border border-slate-800 rounded-2xl p-6 max-h-[500px] overflow-y-auto">
                     {selectedApp ? (
-                      <div className="space-y-6">
-                        <div className="flex justify-between items-start border-b border-slate-800 pb-4">
+                      <div className="space-y-4">
+                        <div className="flex justify-between items-start border-b border-slate-800 pb-3">
                           <div>
                             <span className="text-xs font-mono text-indigo-400 font-bold">{selectedApp.id}</span>
                             <h3 className="text-xl font-bold text-white">{selectedApp.data.discordTag}</h3>
                             <p className="text-xs text-slate-400">{selectedApp.role} &bull; Alter: {selectedApp.data.age}</p>
                           </div>
-                          <button onClick={() => deleteApp(selectedApp.id)} className="text-rose-400 hover:text-rose-300 text-xs font-bold">
+                          <button onClick={() => deleteApp(selectedApp.id)} className="text-rose-400 text-xs font-bold">
                             <i className="fa-solid fa-trash mr-1"></i> Löschen
                           </button>
                         </div>
 
-                        {/* STATUS BUTTONS */}
                         <div>
-                          <p className="text-xs text-slate-400 uppercase font-bold mb-2">Status Ändern:</p>
+                          <p className="text-xs text-slate-400 uppercase font-bold mb-1.5">Status Setzen:</p>
                           <div className="flex flex-wrap gap-2">
                             {['Offen', 'In Bearbeitung', 'Angenommen', 'Abgelehnt'].map((st) => (
                               <button 
                                 key={st} 
                                 onClick={() => updateAppStatus(selectedApp.id, st)}
                                 className={`text-xs px-3 py-1.5 rounded-xl font-bold border transition ${
-                                  selectedApp.status === st ? 'bg-indigo-600 text-white border-indigo-500' : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-white'
+                                  selectedApp.status === st ? 'bg-indigo-600 text-white border-indigo-500' : 'bg-slate-800 text-slate-400 border-slate-700'
                                 }`}
                               >
                                 {st}
@@ -308,42 +348,33 @@
                           </div>
                         </div>
 
-                        {/* ANTWORTEN DETAILLIERT */}
-                        <div className="space-y-3 text-sm">
-                          <div className="bg-slate-900/80 p-3.5 rounded-xl border border-slate-800">
-                            <p className="text-xs text-indigo-400 font-bold">Wöchentliche Arbeitszeit & Aktivität:</p>
-                            <p className="text-slate-200 mt-1">{selectedApp.data.weeklyHours} Stunden/Woche ({selectedApp.data.activeTimes})</p>
+                        <div className="space-y-3 text-sm pt-2">
+                          <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800">
+                            <p className="text-xs text-indigo-400 font-bold">Arbeitszeit:</p>
+                            <p className="text-slate-200 text-xs mt-1">{selectedApp.data.weeklyHours} Std./Woche ({selectedApp.data.activeTimes})</p>
                           </div>
-                          <div className="bg-slate-900/80 p-3.5 rounded-xl border border-slate-800">
-                            <p className="text-xs text-indigo-400 font-bold">Bisherige Moderations-Erfahrung:</p>
-                            <p className="text-slate-200 mt-1 whitespace-pre-wrap">{selectedApp.data.experience}</p>
+                          <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800">
+                            <p className="text-xs text-indigo-400 font-bold">Erfahrung:</p>
+                            <p className="text-slate-200 text-xs mt-1 whitespace-pre-wrap">{selectedApp.data.experience}</p>
                           </div>
-                          <div className="bg-slate-900/80 p-3.5 rounded-xl border border-slate-800">
-                            <p className="text-xs text-indigo-400 font-bold">Bot-Kenntnisse & Tools:</p>
-                            <p className="text-slate-200 mt-1 whitespace-pre-wrap">{selectedApp.data.botKnowledge || "Keine Angabe"}</p>
+                          <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800">
+                            <p className="text-xs text-indigo-400 font-bold">Motivation:</p>
+                            <p className="text-slate-200 text-xs mt-1 whitespace-pre-wrap">{selectedApp.data.motivation}</p>
                           </div>
-                          <div className="bg-slate-900/80 p-3.5 rounded-xl border border-slate-800">
-                            <p className="text-xs text-indigo-400 font-bold">Motivation für MBJC:</p>
-                            <p className="text-slate-200 mt-1 whitespace-pre-wrap">{selectedApp.data.motivation}</p>
+                          <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800">
+                            <p className="text-xs text-indigo-400 font-bold">Szenario 1:</p>
+                            <p className="text-slate-200 text-xs mt-1 whitespace-pre-wrap">{selectedApp.data.scenario1}</p>
                           </div>
-                          <div className="bg-slate-900/80 p-3.5 rounded-xl border border-slate-800">
-                            <p className="text-xs text-indigo-400 font-bold">Stärken & Schwächen:</p>
-                            <p className="text-slate-200 mt-1 whitespace-pre-wrap">{selectedApp.data.strengthsWeaknesses || "Keine Angabe"}</p>
-                          </div>
-                          <div className="bg-slate-900/80 p-3.5 rounded-xl border border-slate-800">
-                            <p className="text-xs text-indigo-400 font-bold">Szenario 1 (Konfliktlösung):</p>
-                            <p className="text-slate-200 mt-1 whitespace-pre-wrap">{selectedApp.data.scenario1}</p>
-                          </div>
-                          <div className="bg-slate-900/80 p-3.5 rounded-xl border border-slate-800">
-                            <p className="text-xs text-indigo-400 font-bold">Szenario 2 (Eskalation / Spam):</p>
-                            <p className="text-slate-200 mt-1 whitespace-pre-wrap">{selectedApp.data.scenario2}</p>
+                          <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800">
+                            <p className="text-xs text-indigo-400 font-bold">Szenario 2:</p>
+                            <p className="text-slate-200 text-xs mt-1 whitespace-pre-wrap">{selectedApp.data.scenario2}</p>
                           </div>
                         </div>
                       </div>
                     ) : (
                       <div className="h-full flex flex-col items-center justify-center text-slate-500 py-12">
                         <i className="fa-regular fa-hand-pointer text-3xl mb-2"></i>
-                        <p className="text-xs">Wähle links eine Bewerbung aus, um sie zu prüfen.</p>
+                        <p className="text-xs">Wähle links eine Bewerbung aus.</p>
                       </div>
                     )}
                   </div>
@@ -357,35 +388,47 @@
             <div className="liquid-glass rounded-3xl p-6 md:p-10 border border-white/10 shadow-2xl">
               <div className="text-center mb-8">
                 <h1 className="text-3xl md:text-4xl font-black text-white">MBJC Team Bewerbung</h1>
-                <p className="text-xs md:text-sm text-slate-400 mt-1">Wähle deine gewünschte Rolle und beantworte die Fragen sorgfältig.</p>
+                <p className="text-xs md:text-sm text-slate-400 mt-1">Wähle deine gewünschte Rolle und bewerbe dich für unser Team.</p>
               </div>
 
-              {/* ROLE SWITCHER */}
-              <div className="grid grid-cols-2 gap-3 mb-8 p-1.5 bg-slate-900/80 rounded-2xl border border-slate-800">
-                <button 
-                  type="button"
-                  onClick={() => setRole("discord_mod")}
-                  className={`py-3.5 rounded-xl text-xs md:text-sm font-bold transition flex items-center justify-center gap-2 ${role === "discord_mod" ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-lg" : "text-slate-400 hover:text-white"}`}
-                >
-                  <i className="fa-brands fa-discord text-lg"></i> Discord Moderator
-                </button>
-                <button 
-                  type="button"
-                  onClick={() => setRole("tiktok_mod")}
-                  className={`py-3.5 rounded-xl text-xs md:text-sm font-bold transition flex items-center justify-center gap-2 ${role === "tiktok_mod" ? "bg-gradient-to-r from-indigo-600 to-cyan-600 text-white shadow-lg" : "text-slate-400 hover:text-white"}`}
-                >
-                  <i className="fa-brands fa-tiktok text-lg"></i> TikTok Moderator
-                </button>
-              </div>
+              {/* ANZEIGE WENN BEWERBUNG GESCHLOSSEN IST */}
+              {!isAppOpen ? (
+                <div className="bg-rose-500/10 border border-rose-500/30 rounded-2xl p-8 text-center my-6">
+                  <div className="w-16 h-16 rounded-2xl bg-rose-500/20 text-rose-400 flex items-center justify-center mx-auto mb-4 text-3xl">
+                    <i className="fa-solid fa-lock"></i>
+                  </div>
+                  <h2 className="text-xl font-bold text-white mb-2">Bewerbungsphase aktuell geschlossen</h2>
+                  <p className="text-slate-300 text-xs max-w-md mx-auto leading-relaxed">
+                    Derzeit nehmen wir keine neuen Bewerbungen an. Wir benachrichtigen dich auf unserem Discord-Server, sobald die nächste Phase startet!
+                  </p>
+                  <a 
+                    href={CONFIG.discordUrl} 
+                    target="_blank" 
+                    className="inline-flex items-center gap-2 mt-6 bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 px-6 rounded-xl text-xs transition"
+                  >
+                    <i className="fa-brands fa-discord"></i> Zum Discord Server
+                  </a>
+                </div>
+              ) : (
+                /* FORMULAR BEI GEÖFFNETER PHASE */
+                <form onSubmit={handleSubmit} className="space-y-6">
+                  <div className="grid grid-cols-2 gap-3 p-1.5 bg-slate-900/80 rounded-2xl border border-slate-800">
+                    <button 
+                      type="button"
+                      onClick={() => setRole("discord_mod")}
+                      className={`py-3.5 rounded-xl text-xs md:text-sm font-bold transition flex items-center justify-center gap-2 ${role === "discord_mod" ? "bg-indigo-600 text-white shadow-lg" : "text-slate-400 hover:text-white"}`}
+                    >
+                      <i className="fa-brands fa-discord text-lg"></i> Discord Mod
+                    </button>
+                    <button 
+                      type="button"
+                      onClick={() => setRole("tiktok_mod")}
+                      className={`py-3.5 rounded-xl text-xs md:text-sm font-bold transition flex items-center justify-center gap-2 ${role === "tiktok_mod" ? "bg-indigo-600 text-white shadow-lg" : "text-slate-400 hover:text-white"}`}
+                    >
+                      <i className="fa-brands fa-tiktok text-lg"></i> TikTok Mod
+                    </button>
+                  </div>
 
-              <form onSubmit={handleSubmit} className="space-y-6">
-                
-                {/* PERSÖNLICHE DATEN */}
-                <div className="bg-slate-900/40 border border-slate-800 rounded-2xl p-5 space-y-4">
-                  <h3 className="text-sm font-bold text-indigo-400 uppercase tracking-wider flex items-center gap-2">
-                    <i className="fa-solid fa-user"></i> 1. Allgemeine Daten
-                  </h3>
-                  
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs font-bold text-slate-300 mb-1.5">Discord Username / Tag *</label>
@@ -441,20 +484,13 @@
                       </select>
                     </div>
                   </div>
-                </div>
-
-                {/* ERFAHRUNG & MOTIVATION */}
-                <div className="bg-slate-900/40 border border-slate-800 rounded-2xl p-5 space-y-4">
-                  <h3 className="text-sm font-bold text-indigo-400 uppercase tracking-wider flex items-center gap-2">
-                    <i className="fa-solid fa-graduation-cap"></i> 2. Erfahrung & Kompetenz
-                  </h3>
 
                   <div>
                     <label className="block text-xs font-bold text-slate-300 mb-1.5">Hast du Vorerfahrung als Moderator? *</label>
                     <textarea 
                       name="experience" 
                       rows="3" 
-                      placeholder="Erzähle von früheren Servern, Projekten oder TikTok-Streams..." 
+                      placeholder="Erzähle von früheren Servern oder Moderations-Aufgaben..." 
                       value={formData.experience} 
                       onChange={handleChange} 
                       className="w-full liquid-input p-3 rounded-xl text-sm" 
@@ -463,28 +499,11 @@
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-slate-300 mb-1.5">
-                      {role === "discord_mod" 
-                        ? "Welche Discord Bots / Mod-Tools kennst du? (z.B. MEE6, Dyno, AutoMod)" 
-                        : "Welche Erfahrung hast du mit TikTok Live Studio / Moderations-Richtlinien?"} *
-                    </label>
-                    <input 
-                      type="text" 
-                      name="botKnowledge" 
-                      placeholder="Kurze Übersicht deiner Tool-Kenntnisse..." 
-                      value={formData.botKnowledge} 
-                      onChange={handleChange} 
-                      className="w-full liquid-input p-3 rounded-xl text-sm" 
-                      required 
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-300 mb-1.5">Warum sollten wir ausgerechnet DICH im MBJC-Team aufnehmen? *</label>
+                    <label className="block text-xs font-bold text-slate-300 mb-1.5">Warum möchtest du ins MBJC-Team? *</label>
                     <textarea 
                       name="motivation" 
                       rows="3" 
-                      placeholder="Deine Motivation, was dich motiviert und auszeichnet..." 
+                      placeholder="Deine Motivation..." 
                       value={formData.motivation} 
                       onChange={handleChange} 
                       className="w-full liquid-input p-3 rounded-xl text-sm" 
@@ -493,31 +512,7 @@
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-slate-300 mb-1.5">Deine größten Stärken & Schwächen *</label>
-                    <textarea 
-                      name="strengthsWeaknesses" 
-                      rows="2" 
-                      placeholder="z.B. Stärken: Geduldig, Ruhig | Schwäche: Manchmal zu perfektionistisch..." 
-                      value={formData.strengthsWeaknesses} 
-                      onChange={handleChange} 
-                      className="w-full liquid-input p-3 rounded-xl text-sm" 
-                      required
-                    ></textarea>
-                  </div>
-                </div>
-
-                {/* SZENARIEN & FACHFRAGEN */}
-                <div className="bg-slate-900/40 border border-slate-800 rounded-2xl p-5 space-y-4">
-                  <h3 className="text-sm font-bold text-indigo-400 uppercase tracking-wider flex items-center gap-2">
-                    <i className="fa-solid fa-comments"></i> 3. Praxisszenarien
-                  </h3>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-300 mb-1.5">
-                      {role === "discord_mod" 
-                        ? "Szenario 1: Zwei Mitglieder beleidigen sich öffentlich im Hauptchat. Wie greifst du ein?" 
-                        : "Szenario 1: Ein Zuschauer spamt im TikTok-Live heftige Beleidigungen. Wie reagierst du?"} *
-                    </label>
+                    <label className="block text-xs font-bold text-slate-300 mb-1.5">Szenario: Zwei User streiten sich heftig. Wie reagierst du? *</label>
                     <textarea 
                       name="scenario1" 
                       rows="3" 
@@ -529,28 +524,11 @@
                     ></textarea>
                   </div>
 
-                  <div>
-                    <label className="block text-xs font-bold text-slate-300 mb-1.5">
-                      {role === "discord_mod" 
-                        ? "Szenario 2: Ein Teammitglied verhält sich ungerecht gegenüber einem User. Was tust du?" 
-                        : "Szenario 2: Ein Stream-Zuschauer versucht dauerhaft Schleichwerbung zu machen. Welche Sanktion wählst du?"} *
-                    </label>
-                    <textarea 
-                      name="scenario2" 
-                      rows="3" 
-                      placeholder="Schritt-für-Schritt Vorgehensweise..." 
-                      value={formData.scenario2} 
-                      onChange={handleChange} 
-                      className="w-full liquid-input p-3 rounded-xl text-sm" 
-                      required
-                    ></textarea>
-                  </div>
-                </div>
-
-                <button type="submit" className="w-full bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-bold py-4 px-6 rounded-2xl transition duration-300 shadow-xl shadow-indigo-600/30 active:scale-95">
-                  <i className="fa-solid fa-paper-plane mr-2"></i> Bewerbung Kostenlos Absenden
-                </button>
-              </form>
+                  <button type="submit" className="w-full bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-bold py-4 px-6 rounded-2xl transition duration-300 shadow-xl shadow-indigo-600/30">
+                    <i className="fa-solid fa-paper-plane mr-2"></i> Bewerbung Absenden
+                  </button>
+                </form>
+              )}
             </div>
           )}
 
@@ -561,19 +539,15 @@
                 <i className="fa-solid fa-check"></i>
               </div>
               <h2 className="text-2xl font-black text-white mb-1">Bewerbung Gespeichert!</h2>
-              <p className="text-xs text-slate-400 mb-4">Deine persönliche Ticket-Nummer:</p>
+              <p className="text-xs text-slate-400 mb-4">Deine Ticket-Nummer:</p>
               
               <div className="bg-slate-900 p-3.5 rounded-xl font-mono text-indigo-400 font-bold text-lg mb-6 border border-slate-800 tracking-wider">
                 {submittedTicket.id}
               </div>
 
-              <p className="text-xs text-slate-300 leading-relaxed mb-6">
-                Unsere Admins wurden benachrichtigt. Du kannst auf Discord im Support-Kanal nach dem Status fragen oder dich mit deiner Ticket-ID melden.
-              </p>
-
               <div className="flex gap-3">
                 <button onClick={() => setView("form")} className="w-full bg-slate-800 hover:bg-slate-700 text-white font-bold py-3.5 rounded-xl text-xs transition">
-                  Neues Formular
+                  Zurück
                 </button>
                 <a href={CONFIG.discordUrl} target="_blank" className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3.5 rounded-xl text-xs transition flex items-center justify-center gap-1">
                   <i className="fa-brands fa-discord"></i> Zum Discord
