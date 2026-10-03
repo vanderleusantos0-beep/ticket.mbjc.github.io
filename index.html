@@ -98,8 +98,8 @@
       serverName: "MBJC Network",
       mainSite: "http://mbjc.info/",
       discordUrl: "https://discord.gg/2Nuwdyr4tZ",
-      // BERECHTIGTE ADMIN USERNAME-LISTE (INCL. 'xT' IN JEDER SCHREIBWEISE)
-      allowedAdmins: ["xt", "xt_admin", "owner_xt"],
+      // Standard Admin Benutzer (Standardmäßig xT):
+      defaultAdmins: ["xt"],
       webhookUrl: "https://discord.com/api/webhooks/1555967152463417437/JNNZQHyWkGE6HORhaaQPe5kkv8MYgr_c7oAYbVhoI1pBXHTq58oCNg9SI_-Tbq-q5Nsp"
     };
 
@@ -109,6 +109,9 @@
       
       // Admin Authentication State
       const [adminUser, setAdminUser] = React.useState("");
+      const [allowedAdmins, setAllowedAdmins] = React.useState(CONFIG.defaultAdmins);
+      const [newAdminInput, setNewAdminInput] = React.useState("");
+
       const [codeSent, setCodeSent] = React.useState(false);
       const [generatedCode, setGeneratedCode] = React.useState("");
       const [inputCode, setInputCode] = React.useState("");
@@ -168,6 +171,11 @@
         if (savedStatus !== null) {
           setIsAppOpen(JSON.parse(savedStatus));
         }
+
+        const savedAdmins = localStorage.getItem("mbjc_admin_users");
+        if (savedAdmins) {
+          try { setAllowedAdmins(JSON.parse(savedAdmins)); } catch(e){}
+        }
       }, []);
 
       React.useEffect(() => {
@@ -183,11 +191,31 @@
         localStorage.setItem("mbjc_app_status", JSON.stringify(open));
       };
 
+      const handleAddAdmin = (e) => {
+        e.preventDefault();
+        const val = newAdminInput.trim().toLowerCase();
+        if (val && !allowedAdmins.includes(val)) {
+          const updated = [...allowedAdmins, val];
+          setAllowedAdmins(updated);
+          localStorage.setItem("mbjc_admin_users", JSON.stringify(updated));
+          setNewAdminInput("");
+        }
+      };
+
+      const handleRemoveAdmin = (userToRemove) => {
+        if (allowedAdmins.length <= 1) {
+          alert("Mindestens ein Admin muss im System verbleiben!");
+          return;
+        }
+        const updated = allowedAdmins.filter(u => u !== userToRemove);
+        setAllowedAdmins(updated);
+        localStorage.setItem("mbjc_admin_users", JSON.stringify(updated));
+      };
+
       const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
       };
 
-      // FLEXIBLE PRÜFUNG DES USERNAMES ('xT')
       const sendDiscordAdminCode = async (e) => {
         if (e) e.preventDefault();
 
@@ -202,7 +230,7 @@
         }
 
         const cleanUser = adminUser.trim().toLowerCase();
-        const isAuthorized = CONFIG.allowedAdmins.some(adm => cleanUser.includes(adm) || cleanUser === "xt");
+        const isAuthorized = allowedAdmins.some(adm => cleanUser === adm || cleanUser.includes(adm));
 
         if (!isAuthorized) {
           setAdminError("Zugriff verweigert! Nicht autorisierter Discord-Username.");
@@ -410,12 +438,12 @@
                 <i className="fa-solid fa-ticket"></i>
               </div>
               <h2 className="text-2xl font-black mb-2 text-white">Ticket Status Prüfen</h2>
-              <p className="text-xs text-slate-400 mb-6">Gib deine Ticket ID ein (z. B. MBJC-TICK-1234), um den aktuellen Bearbeitungsstand zu sehen.</p>
+              <p className="text-xs text-slate-400 mb-6">Gib deine Ticket ID ein, um den aktuellen Bearbeitungsstand zu sehen.</p>
 
               <form onSubmit={handleTrackTicket} className="space-y-4 mb-6">
                 <input 
                   type="text" 
-                  placeholder="MBJC-TICK-XXXX"
+                  placeholder="Ticket ID eingeben..."
                   value={trackIdInput}
                   onChange={(e) => setTrackIdInput(e.target.value)}
                   className="w-full liquid-input p-3.5 rounded-xl text-center text-sm font-mono tracking-wider"
@@ -447,7 +475,7 @@
             </div>
           )}
 
-          {/* VIEW: ADMIN LOGIN MIT ENTHÄLT 'xT' USERNAME PRÜFUNG */}
+          {/* VIEW: ADMIN LOGIN */}
           {view === "adminLogin" && (
             <div className="liquid-glass rounded-3xl p-8 max-w-md mx-auto text-center border border-indigo-500/30 shadow-2xl relative overflow-hidden">
               <div className="w-16 h-16 rounded-2xl bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center mx-auto mb-4 text-indigo-400 text-3xl shadow-inner">
@@ -456,7 +484,7 @@
               <h2 className="text-2xl font-black mb-2 text-white">Discord 2FA Admin Login</h2>
               <p className="text-xs text-slate-400 mb-6 leading-relaxed">
                 {!codeSent 
-                  ? "Gib deinen autorisierten Discord-Usernamen (z. B. xT) ein, um den Code anzufordern." 
+                  ? "Gib deinen autorisierten Discord-Usernamen ein, um den 2FA-Code anzufordern." 
                   : "Der Code wurde an Discord gesendet! Gib den 6-stelligen Code ein."}
               </p>
 
@@ -466,7 +494,7 @@
                     <label className="block text-left text-xs font-bold text-slate-300 mb-1">Discord Admin Username *</label>
                     <input 
                       type="text" 
-                      placeholder="z.B. xT"
+                      placeholder="Discord Username"
                       value={adminUser}
                       onChange={(e) => setAdminUser(e.target.value)}
                       className="w-full liquid-input p-3.5 rounded-xl text-center text-sm font-bold"
@@ -520,15 +548,17 @@
 
           {/* VIEW: ADMIN PANEL */}
           {view === "adminPanel" && (
-            <div className="liquid-glass rounded-3xl p-6 md:p-8">
-              <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 mb-8 flex flex-col md:flex-row items-center justify-between gap-4 shadow-md">
+            <div className="liquid-glass rounded-3xl p-6 md:p-8 space-y-6">
+              
+              {/* STEUERUNG: BEWERBUNGSPHASE */}
+              <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 flex flex-col md:flex-row items-center justify-between gap-4 shadow-md">
                 <div>
                   <h3 className="text-sm font-bold text-white flex items-center gap-2">
                     <i className="fa-solid fa-toggle-on text-indigo-400"></i> Status der Bewerbungsphase
                   </h3>
                   <p className="text-xs text-slate-400 mt-0.5">
-                    Aktueller Zustand: <strong className={isAppOpen ? "text-emerald-400" : "text-rose-400"}>
-                      {isAppOpen ? "Bewerbungen GEÖFFNET" : "Bewerbungen GESCHLISTEN (Bewerbungsstopp)"}
+                    Aktuell: <strong className={isAppOpen ? "text-emerald-400" : "text-rose-400"}>
+                      {isAppOpen ? "Bewerbungen GEÖFFNET" : "Bewerbungen GESCHLOSSEN"}
                     </strong>
                   </p>
                 </div>
@@ -553,7 +583,40 @@
                 </div>
               </div>
 
-              <div className="flex flex-col md:flex-row md:items-center justify-between pb-6 border-b border-slate-800 gap-4 mb-6">
+              {/* STEUERUNG: OWNER BENUTZER-VERWALTUNG */}
+              <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 shadow-md">
+                <h3 className="text-sm font-bold text-white flex items-center gap-2 mb-3">
+                  <i className="fa-solid fa-users-gear text-indigo-400"></i> Autorisierte Admin-Benutzer Verwalten
+                </h3>
+                
+                <form onSubmit={handleAddAdmin} className="flex gap-2 mb-4">
+                  <input 
+                    type="text" 
+                    placeholder="Neuen Discord-Usernamen hinzufügen..." 
+                    value={newAdminInput} 
+                    onChange={(e) => setNewAdminInput(e.target.value)} 
+                    className="liquid-input p-2.5 rounded-xl text-xs flex-1"
+                    required
+                  />
+                  <button type="submit" className="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-4 py-2.5 rounded-xl text-xs transition">
+                    Hinzufügen
+                  </button>
+                </form>
+
+                <div className="flex flex-wrap gap-2">
+                  {allowedAdmins.map((adm) => (
+                    <span key={adm} className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-800 border border-slate-700 text-xs font-semibold text-indigo-300">
+                      <span>@{adm}</span>
+                      <button onClick={() => handleRemoveAdmin(adm)} className="text-rose-400 hover:text-rose-300 text-xs">
+                        <i className="fa-solid fa-xmark"></i>
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {/* DASHBOARD HEADER */}
+              <div className="flex flex-col md:flex-row md:items-center justify-between pb-4 border-b border-slate-800 gap-4">
                 <div>
                   <h2 className="text-2xl font-black text-white flex items-center gap-2">
                     <i className="fa-solid fa-clipboard-list text-indigo-400"></i> Admin Dashboard
@@ -738,7 +801,7 @@
                       <input 
                         type="text" 
                         name="discordTag" 
-                        placeholder="z.B. user_123" 
+                        placeholder="Dein Username" 
                         value={formData.discordTag} 
                         onChange={handleChange} 
                         className="w-full liquid-input p-3 rounded-xl text-sm" 
@@ -750,7 +813,7 @@
                       <input 
                         type="number" 
                         name="age" 
-                        placeholder="z.B. 16" 
+                        placeholder="Dein Alter" 
                         value={formData.age} 
                         onChange={handleChange} 
                         className="w-full liquid-input p-3 rounded-xl text-sm" 
