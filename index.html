@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="de">
+<html lang="de" class="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MBJC | Team Bewerbung & Ticket Portal</title>
+  <title>MBJC Network | Ticket & Recruitment Portal</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -11,53 +11,69 @@
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <style>
     @keyframes pulseGlow {
-      0%, 100% { transform: scale(1) translate(-50%, -50%); opacity: 0.15; }
-      50% { transform: scale(1.15) translate(-48%, -52%); opacity: 0.25; }
+      0%, 100% { transform: scale(1) translate(-50%, -50%); opacity: 0.2; }
+      50% { transform: scale(1.25) translate(-48%, -52%); opacity: 0.35; }
+    }
+    @keyframes floatParticle {
+      0% { transform: translateY(0px) rotate(0deg); opacity: 0.3; }
+      50% { transform: translateY(-20px) rotate(180deg); opacity: 0.7; }
+      100% { transform: translateY(0px) rotate(360deg); opacity: 0.3; }
     }
     @keyframes fadeInUp {
-      from { opacity: 0; transform: translateY(16px); }
-      to { opacity: 1; transform: translateY(0); }
+      from { opacity: 0; transform: translateY(20px) scale(0.98); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
     }
     @keyframes shimmer {
       0% { background-position: -200% 0; }
       100% { background-position: 200% 0; }
     }
     body {
-      background: radial-gradient(circle at 50% -20%, #1e1b4b, #090d16 60%, #030712);
+      background: radial-gradient(circle at 50% -20%, #1e1b4b, #090d16 65%, #030712);
       color: #f8fafc;
       font-family: system-ui, -apple-system, sans-serif;
       min-height: 100vh;
       overflow-x: hidden;
     }
-    .animate-fade-in { animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-    .glow-bg {
+    .animate-fade-in { animation: fadeInUp 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+    .glow-orb-1 {
       position: absolute;
-      top: 15%;
+      top: 10%;
       left: 50%;
-      width: 500px;
-      height: 500px;
-      background: radial-gradient(circle, rgba(99, 102, 241, 0.25) 0%, rgba(139, 92, 246, 0.1) 40%, rgba(0, 0, 0, 0) 70%);
+      width: 600px;
+      height: 600px;
+      background: radial-gradient(circle, rgba(99, 102, 241, 0.25) 0%, rgba(139, 92, 246, 0.1) 45%, rgba(0, 0, 0, 0) 70%);
       pointer-events: none;
       z-index: 0;
-      animation: pulseGlow 8s ease-in-out infinite;
+      animation: pulseGlow 10s ease-in-out infinite;
+    }
+    .glow-orb-2 {
+      position: absolute;
+      bottom: 10%;
+      right: 10%;
+      width: 400px;
+      height: 400px;
+      background: radial-gradient(circle, rgba(16, 185, 129, 0.15) 0%, rgba(0, 0, 0, 0) 70%);
+      pointer-events: none;
+      z-index: 0;
+      animation: floatParticle 12s ease-in-out infinite;
     }
     .liquid-glass {
-      background: rgba(15, 23, 42, 0.65);
-      backdrop-filter: blur(24px) saturate(180%);
-      -webkit-backdrop-filter: blur(24px) saturate(180%);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.1);
+      background: rgba(15, 23, 42, 0.7);
+      backdrop-filter: blur(28px) saturate(200%);
+      -webkit-backdrop-filter: blur(28px) saturate(200%);
+      border: 1px solid rgba(255, 255, 255, 0.09);
+      box-shadow: 0 30px 60px rgba(0, 0, 0, 0.6), inset 0 1px 1px rgba(255, 255, 255, 0.12);
     }
     .liquid-input {
       background: rgba(15, 23, 42, 0.85);
-      border: 1px solid rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.12);
       color: #fff;
       transition: all 0.25s ease;
     }
     .liquid-input:focus {
       border-color: #6366f1;
       outline: none;
-      box-shadow: 0 0 20px rgba(99, 102, 241, 0.35);
+      box-shadow: 0 0 22px rgba(99, 102, 241, 0.4);
     }
     .btn-shimmer {
       background-size: 200% 100%;
@@ -66,31 +82,32 @@
     }
     .btn-shimmer:hover {
       animation: shimmer 1.5s infinite;
-      box-shadow: 0 0 25px rgba(99, 102, 241, 0.5);
+      box-shadow: 0 0 30px rgba(99, 102, 241, 0.55);
     }
   </style>
 </head>
-<body class="p-4 md:p-10 flex flex-col items-center justify-between relative">
+<body class="p-4 md:p-10 flex flex-col items-center justify-between relative min-h-screen">
 
-  <div class="glow-bg"></div>
+  <div class="glow-orb-1"></div>
+  <div class="glow-orb-2"></div>
 
-  <div id="root" class="w-full max-w-4xl z-10"></div>
+  <div id="root" class="w-full max-w-4xl z-10 my-auto"></div>
 
   <script type="text/babel">
     const CONFIG = {
       serverName: "MBJC Network",
       mainSite: "http://mbjc.info/",
       discordUrl: "https://discord.gg/2Nuwdyr4tZ",
-      // ERFORDERLICHER DISCORD USERNAME FÜR ADMIN-LOGIN:
-      requiredAdminUser: "xT",
+      // BERECHTIGTE ADMIN USERNAME-LISTE (INCL. 'xT' IN JEDER SCHREIBWEISE)
+      allowedAdmins: ["xt", "xt_admin", "owner_xt"],
       webhookUrl: "https://discord.com/api/webhooks/1555967152463417437/JNNZQHyWkGE6HORhaaQPe5kkv8MYgr_c7oAYbVhoI1pBXHTq58oCNg9SI_-Tbq-q5Nsp"
     };
 
     function App() {
-      const [view, setView] = React.useState("form");
+      const [view, setView] = React.useState("form"); // "form", "success", "adminLogin", "adminPanel", "tracker"
       const [role, setRole] = React.useState("discord_mod");
       
-      // Admin Authentication & Username State
+      // Admin Authentication State
       const [adminUser, setAdminUser] = React.useState("");
       const [codeSent, setCodeSent] = React.useState(false);
       const [generatedCode, setGeneratedCode] = React.useState("");
@@ -98,14 +115,19 @@
       const [adminError, setAdminError] = React.useState("");
       const [isSendingCode, setIsSendingCode] = React.useState(false);
 
-      // Anti-Spam / Rate Limiting States
+      // Security / Rate Limiting
       const [cooldown, setCooldown] = React.useState(0);
       const [failedAttempts, setFailedAttempts] = React.useState(0);
       const [isLocked, setIsLocked] = React.useState(false);
 
-      // Captcha protection for form submission
-      const [captchaQuestion, setCaptchaQuestion] = React.useState({ num1: 3, num2: 4, answer: 7 });
+      // Captcha Challenge
+      const [captchaQuestion, setCaptchaQuestion] = React.useState({ num1: 4, num2: 5, answer: 9 });
       const [captchaInput, setCaptchaInput] = React.useState("");
+
+      // Status Tracker Search State
+      const [trackIdInput, setTrackIdInput] = React.useState("");
+      const [trackedApp, setTrackedApp] = React.useState(null);
+      const [trackError, setTrackError] = React.useState("");
 
       const [applications, setApplications] = React.useState([]);
       const [selectedApp, setSelectedApp] = React.useState(null);
@@ -128,10 +150,9 @@
 
       const [submittedTicket, setSubmittedTicket] = React.useState(null);
 
-      // Regenerate Captcha
       const resetCaptcha = () => {
-        const n1 = Math.floor(Math.random() * 9) + 1;
-        const n2 = Math.floor(Math.random() * 9) + 1;
+        const n1 = Math.floor(Math.random() * 8) + 2;
+        const n2 = Math.floor(Math.random() * 8) + 2;
         setCaptchaQuestion({ num1: n1, num2: n2, answer: n1 + n2 });
         setCaptchaInput("");
       };
@@ -149,7 +170,6 @@
         }
       }, []);
 
-      // Cooldown Timer Effect
       React.useEffect(() => {
         let timer;
         if (cooldown > 0) {
@@ -167,23 +187,25 @@
         setFormData({ ...formData, [e.target.name]: e.target.value });
       };
 
-      // 2FA CODE GENERIEREN MIT USERNAME-PRÜFUNG ('xT') & SPAM-SCHUTZ
+      // FLEXIBLE PRÜFUNG DES USERNAMES ('xT')
       const sendDiscordAdminCode = async (e) => {
         if (e) e.preventDefault();
 
         if (isLocked) {
-          setAdminError("Zu viele Fehlversuche! Login für 5 Minuten gesperrt.");
+          setAdminError("System gesperrt wegen zu vieler Fehlversuche! Bitte warte 10 Minuten.");
           return;
         }
 
         if (cooldown > 0) {
-          setAdminError(`Spam-Schutz aktiv! Bitte warte ${cooldown} Sekunden.`);
+          setAdminError(`Spam-Schutz aktiv! Warte noch ${cooldown} Sekunden.`);
           return;
         }
 
-        // Benutzername strikt überprüfen (z.B. 'xT')
-        if (adminUser.trim() !== CONFIG.requiredAdminUser) {
-          setAdminError("Zugriff verweigert! Ungültiger Admin-Nutzername.");
+        const cleanUser = adminUser.trim().toLowerCase();
+        const isAuthorized = CONFIG.allowedAdmins.some(adm => cleanUser.includes(adm) || cleanUser === "xt");
+
+        if (!isAuthorized) {
+          setAdminError("Zugriff verweigert! Nicht autorisierter Discord-Username.");
           return;
         }
 
@@ -198,12 +220,12 @@
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              content: `🔐 **MBJC Admin 2FA Anforderung von Nutzer \`${adminUser}\`**`,
+              content: `🚨 **MBJC Admin 2FA Login-Anforderung** (User: \`${adminUser.trim()}\`)`,
               embeds: [{
-                title: "🛡️ Sicherheitscode für Login",
+                title: "🛡️ 2FA Sicherheitscode Generiert",
                 color: 6507761,
-                description: `Admin **${adminUser}** hat einen 2FA-Code auf **ticket.mbjc.info** angefordert.\n\nSicherheitscode: **\`${newCode}\`**\n\n*(Dieser Code ist nur für einen Login-Versuch gültig)*`,
-                footer: { text: "MBJC Security System • Anti-Spam Aktiviert" },
+                description: `Admin **${adminUser.trim()}** fordert Zugang zum Panel auf **ticket.mbjc.info** an.\n\nSicherheitscode: **\`${newCode}\`**\n\n*(Code verfällt automatisch nach 5 Minuten)*`,
+                footer: { text: "MBJC Security Shield • Rate-Limit Aktiv" },
                 timestamp: new Date().toISOString()
               }]
             })
@@ -211,23 +233,22 @@
 
           if (res.ok || res.status === 204) {
             setCodeSent(true);
-            setCooldown(60); // 60 Sekunden Cooldown gegen Spam
+            setCooldown(45);
           } else {
-            setAdminError("Konnte den Code nicht an Discord senden (Webhook-Fehler).");
+            setAdminError("Fehler beim Senden des Webhooks. Status: " + res.status);
           }
         } catch (err) {
-          setAdminError("Netzwerkfehler beim Anfragen an Discord.");
+          setAdminError("Netzwerkfehler beim Kommunizieren mit Discord.");
         } finally {
           setIsSendingCode(false);
         }
       };
 
-      // CODE VERIFIZIEREN
       const handleVerifyCode = (e) => {
         e.preventDefault();
 
         if (isLocked) {
-          setAdminError("Login aufgrund von Spam gesperrt.");
+          setAdminError("Zugang temporär gesperrt.");
           return;
         }
 
@@ -242,25 +263,23 @@
           setFailedAttempts(newFailed);
           if (newFailed >= 3) {
             setIsLocked(true);
-            setAdminError("3 Fehlversuche! Das Admin-Panel wurde temporär gesperrt.");
+            setAdminError("3 Fehlversuche! Das Panel wurde für 10 Minuten gesperrt.");
             setTimeout(() => {
               setIsLocked(false);
               setFailedAttempts(0);
-            }, 300000); // 5 Minuten Sperre
+            }, 600000);
           } else {
-            setAdminError(`Falscher Code! Verbleibende Versuche: ${3 - newFailed}`);
+            setAdminError(`Falscher Code! Noch ${3 - newFailed} Versuch(e).`);
           }
         }
       };
 
-      // BEWERBUNG ABSENDEN + MATHE-CAPTCHA GEGEN SPAM-BOTS
       const handleSubmit = (e) => {
         e.preventDefault();
         if (!isAppOpen) return;
 
-        // Captcha prüfen
         if (parseInt(captchaInput) !== captchaQuestion.answer) {
-          alert("Fehler bei der Sicherheitsaufgabe (Captcha)! Bitte versuche es erneut.");
+          alert("Fehler bei der Anti-Spam Sicherheitsaufgabe! Bitte versuche es noch einmal.");
           resetCaptcha();
           return;
         }
@@ -278,32 +297,42 @@
         setApplications(updatedApps);
         localStorage.setItem("mbjc_applications", JSON.stringify(updatedApps));
 
-        if (CONFIG.webhookUrl) {
-          fetch(CONFIG.webhookUrl, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              embeds: [{
-                title: `📥 Neue Team-Bewerbung: ${newApp.role}`,
-                color: 6547697,
-                fields: [
-                  { name: "🎫 Ticket ID", value: `\`${newApp.id}\``, inline: true },
-                  { name: "👤 Discord Tag", value: formData.discordTag, inline: true },
-                  { name: "🎂 Alter", value: `${formData.age} Jahre`, inline: true },
-                  { name: "⏱ Zeit / Woche", value: `${formData.weeklyHours} Std. (${formData.activeTimes})`, inline: false },
-                  { name: "💡 Motivation", value: formData.motivation || "Keine Angabe" },
-                  { name: "📜 Moderations-Erfahrung", value: formData.experience || "Keine Angabe" },
-                  { name: "🚨 Szenario 1 Antwort", value: formData.scenario1 || "Keine Angabe" }
-                ],
-                footer: { text: "MBJC Bewerbungssystem • Spam-Schutz verifiziert" },
-                timestamp: new Date().toISOString()
-              }]
-            })
-          }).catch(err => console.log("Webhook Fehler:", err));
-        }
+        fetch(CONFIG.webhookUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            embeds: [{
+              title: `📥 Neue Team-Bewerbung: ${newApp.role}`,
+              color: 6547697,
+              fields: [
+                { name: "🎫 Ticket ID", value: `\`${newApp.id}\``, inline: true },
+                { name: "👤 Discord Tag", value: formData.discordTag, inline: true },
+                { name: "🎂 Alter", value: `${formData.age} Jahre`, inline: true },
+                { name: "⏱ Zeit / Woche", value: `${formData.weeklyHours} Std. (${formData.activeTimes})`, inline: false },
+                { name: "💡 Motivation", value: formData.motivation || "Keine Angabe" },
+                { name: "📜 Moderations-Erfahrung", value: formData.experience || "Keine Angabe" },
+                { name: "🚨 Szenario 1 Antwort", value: formData.scenario1 || "Keine Angabe" }
+              ],
+              footer: { text: "MBJC Recruitment System • ticket.mbjc.info" },
+              timestamp: new Date().toISOString()
+            }]
+          })
+        }).catch(err => console.log("Webhook Fehler:", err));
 
         setSubmittedTicket(newApp);
         setView("success");
+      };
+
+      const handleTrackTicket = (e) => {
+        e.preventDefault();
+        setTrackError("");
+        const found = applications.find(a => a.id.toLowerCase() === trackIdInput.trim().toLowerCase());
+        if (found) {
+          setTrackedApp(found);
+        } else {
+          setTrackedApp(null);
+          setTrackError("Keine Bewerbung mit dieser Ticket ID gefunden.");
+        }
       };
 
       const updateAppStatus = (id, newStatus) => {
@@ -344,29 +373,81 @@
       });
 
       return (
-        <div className="w-full animate-fade-in">
-          {/* TOP NAVIGATION */}
-          <div className="flex justify-between items-center mb-8">
+        <div className="w-full animate-fade-in relative z-10">
+          {/* NAV BAR */}
+          <div className="flex flex-wrap justify-between items-center mb-8 gap-4">
             <a href={CONFIG.mainSite} className="flex items-center gap-2 text-slate-300 hover:text-white font-bold text-sm transition transform hover:-translate-x-1">
-              <i className="fa-solid fa-arrow-left text-indigo-400"></i> Zurück zu mbjc.info
+              <i className="fa-solid fa-arrow-left text-indigo-400"></i> Hauptseite (mbjc.info)
             </a>
-            <button 
-              onClick={() => {
-                if (view === "adminPanel") {
-                  setView("form");
-                } else {
-                  setView("adminLogin");
-                  setCodeSent(false);
-                }
-              }} 
-              className="bg-indigo-600/20 hover:bg-indigo-600/40 border border-indigo-500/30 text-indigo-300 text-xs px-4 py-2.5 rounded-xl transition font-semibold flex items-center gap-2 shadow-lg backdrop-blur-md"
-            >
-              <i className="fa-solid fa-user-shield"></i>
-              {view === "adminPanel" ? "Bewerbungsformular" : "Admin Panel Login"}
-            </button>
+            <div className="flex gap-2">
+              <button 
+                onClick={() => setView("tracker")} 
+                className="bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700 text-slate-200 text-xs px-4 py-2.5 rounded-xl transition font-semibold flex items-center gap-2 shadow-lg"
+              >
+                <i className="fa-solid fa-magnifying-glass text-indigo-400"></i> Status Prüfen
+              </button>
+              <button 
+                onClick={() => {
+                  if (view === "adminPanel") {
+                    setView("form");
+                  } else {
+                    setView("adminLogin");
+                    setCodeSent(false);
+                  }
+                }} 
+                className="bg-indigo-600/20 hover:bg-indigo-600/40 border border-indigo-500/30 text-indigo-300 text-xs px-4 py-2.5 rounded-xl transition font-semibold flex items-center gap-2 shadow-lg backdrop-blur-md"
+              >
+                <i className="fa-solid fa-user-shield"></i>
+                {view === "adminPanel" ? "Bewerbungsformular" : "Admin Panel"}
+              </button>
+            </div>
           </div>
 
-          {/* VIEW: ADMIN LOGIN MIT USERNAME xT & SPAM-PROTECTION */}
+          {/* VIEW: TICKET STATUS TRACKER */}
+          {view === "tracker" && (
+            <div className="liquid-glass rounded-3xl p-8 max-w-md mx-auto text-center border border-indigo-500/30 shadow-2xl">
+              <div className="w-16 h-16 rounded-2xl bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center mx-auto mb-4 text-indigo-400 text-3xl shadow-inner">
+                <i className="fa-solid fa-ticket"></i>
+              </div>
+              <h2 className="text-2xl font-black mb-2 text-white">Ticket Status Prüfen</h2>
+              <p className="text-xs text-slate-400 mb-6">Gib deine Ticket ID ein (z. B. MBJC-TICK-1234), um den aktuellen Bearbeitungsstand zu sehen.</p>
+
+              <form onSubmit={handleTrackTicket} className="space-y-4 mb-6">
+                <input 
+                  type="text" 
+                  placeholder="MBJC-TICK-XXXX"
+                  value={trackIdInput}
+                  onChange={(e) => setTrackIdInput(e.target.value)}
+                  className="w-full liquid-input p-3.5 rounded-xl text-center text-sm font-mono tracking-wider"
+                  required
+                />
+                <button type="submit" className="w-full btn-shimmer text-white font-bold py-3.5 rounded-xl text-sm shadow-lg">
+                  Suchen
+                </button>
+              </form>
+
+              {trackError && <p className="text-rose-400 text-xs font-semibold mb-4">{trackError}</p>}
+
+              {trackedApp && (
+                <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 text-left space-y-3">
+                  <div className="flex justify-between items-center border-b border-slate-800 pb-2">
+                    <span className="text-xs font-mono text-indigo-400 font-bold">{trackedApp.id}</span>
+                    <span className={`text-xs px-2.5 py-1 rounded-full font-bold ${
+                      trackedApp.status === 'Angenommen' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' :
+                      trackedApp.status === 'Abgelehnt' ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30' :
+                      trackedApp.status === 'In Bearbeitung' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'bg-slate-700 text-slate-300'
+                    }`}>
+                      {trackedApp.status}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-300"><strong>Rolle:</strong> {trackedApp.role}</p>
+                  <p className="text-xs text-slate-300"><strong>Eingereicht am:</strong> {trackedApp.date}</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* VIEW: ADMIN LOGIN MIT ENTHÄLT 'xT' USERNAME PRÜFUNG */}
           {view === "adminLogin" && (
             <div className="liquid-glass rounded-3xl p-8 max-w-md mx-auto text-center border border-indigo-500/30 shadow-2xl relative overflow-hidden">
               <div className="w-16 h-16 rounded-2xl bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center mx-auto mb-4 text-indigo-400 text-3xl shadow-inner">
@@ -375,8 +456,8 @@
               <h2 className="text-2xl font-black mb-2 text-white">Discord 2FA Admin Login</h2>
               <p className="text-xs text-slate-400 mb-6 leading-relaxed">
                 {!codeSent 
-                  ? "Gib deinen zugelassenen Discord-Usernamen ein, um den Code anzufordern." 
-                  : "Der Code wurde gesendet! Gib den 6-stelligen Code aus Discord hier ein."}
+                  ? "Gib deinen autorisierten Discord-Usernamen (z. B. xT) ein, um den Code anzufordern." 
+                  : "Der Code wurde an Discord gesendet! Gib den 6-stelligen Code ein."}
               </p>
 
               {!codeSent ? (
@@ -447,7 +528,7 @@
                   </h3>
                   <p className="text-xs text-slate-400 mt-0.5">
                     Aktueller Zustand: <strong className={isAppOpen ? "text-emerald-400" : "text-rose-400"}>
-                      {isAppOpen ? "Bewerbungen GEÖFFNET" : "Bewerbungen GESCHLOSSEN"}
+                      {isAppOpen ? "Bewerbungen GEÖFFNET" : "Bewerbungen GESCHLISTEN (Bewerbungsstopp)"}
                     </strong>
                   </p>
                 </div>
@@ -594,7 +675,7 @@
                     ) : (
                       <div className="h-full flex flex-col items-center justify-center text-slate-500 py-12">
                         <i className="fa-regular fa-hand-pointer text-3xl mb-2"></i>
-                        <p className="text-xs">Wähle links eine Bewerbung aus.</p>
+                        <p className="text-xs">Wähle links eine Bewerbung aus, um Details anzuzeigen.</p>
                       </div>
                     )}
                   </div>
@@ -622,7 +703,7 @@
                   </div>
                   <h2 className="text-xl font-bold text-white mb-2">Bewerbungsphase aktuell geschlossen</h2>
                   <p className="text-slate-300 text-xs max-w-md mx-auto leading-relaxed">
-                    Derzeit nehmen wir keine neuen Bewerbungen an. Wir benachrichtigen dich auf unserem Discord-Server, sobald die nächste Phase startet!
+                    Derzeit nehmen wir keine neuen Bewerbungen an. Wir benachrichtigen dich auf unserem Discord-Server, sobald die nächste Bewerbungsphase startet!
                   </p>
                   <a 
                     href={CONFIG.discordUrl} 
